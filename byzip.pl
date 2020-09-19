@@ -31,8 +31,7 @@ use byzip_c;
 use byzip_v;
 use byzip_plot;
 use byzip_debug;
-use byzip_rel;
-use byzip_local;
+use byzip_setup;
 use byzip_mt;
 use byzip_make_random_choices;
 
@@ -46,18 +45,11 @@ package main;
 #
 
 #
-# Use data from Google Drive
-# NOT FUNCTIONING YET
-#
-my $pp_do_everything_relative_to_startup_dir = 0;
-
-
 #
 #
-#
-my $pp_covid_data_root_dir = 'D:/Covid';
+my $pp_covid_data_root_dir = 'D:/ByZip';
 my $pp_create_missing_directories = 1;
-my $pp_report_data_collection_messages = 0;
+my $pp_report_data_collection_messages = 1;
 my $pp_report_sim_messages = 0;
 my $pp_report_adding_case = 0;
 my $pp_dont_do_sims = 0;
@@ -77,8 +69,10 @@ my $todays_date_string_for_file_names = sprintf ("%04d %02d %02d",
                 $now->year(),
                 $now->month(),
                 $now->day());
+
 #
-#
+# MORTALITY
+# =========
 #
 my $mortality = 3.1;
 my %mortality_table;
@@ -123,6 +117,10 @@ if ($pp_enable_use_of_owid_mortality_data) {
     }
 }
 
+#
+# ARGUMENTS
+# =========
+#
 my $zip_string;
 my $duration_min = 9;
 my $duration_max = 19;
@@ -132,8 +130,6 @@ my $untested_positive = 0;
 my $severity = '40:40:20';
 my $plot_output_flag = 0;
 my $max_cured = 0;
-
-my @date_dirs;
 
 my $untested_positive_switch = 'untested_positive=';
 my $untested_positive_switch_string_len = length ($untested_positive_switch);
@@ -213,40 +209,23 @@ print ("  Clip cured plot line at $max_cured. (Use $max_display_switch)\n");
 my @csv_files;
 # my $non_white_x_10 = int ($non_white * 10);
 
-my $status = 1;
-my $dir;
-if ($pp_do_everything_relative_to_startup_dir) {
-    ($status, $dir) = byzip_rel::setup_relative ();
-}
-else {
-    ($status, $dir) = byzip_local::setup_local ($state, $pp_create_missing_directories);
-}
+#
+# SETUP
+# =====
+#
+# Select state, pick directories, inventory directories, make missing directories
+#
+my ($status, $dir, $date_dirs_list_ptr) = byzip_setup::setup ($state, $pp_create_missing_directories);
 if ($status == 0) {
     exit (1);
 }
 
 print ("Current working directory is $dir\n");
 
-#
-# Examine $dir
-#
-opendir (DIR, $dir) or die "Can't open $dir: $!";
-while (my $fn = readdir (DIR)) {
-    if ($fn =~ /^[.]/) {
-        next;
-    }
-    my $fq_fn = "$dir/$fn";
-    if (-d $fq_fn) {
-        if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {
-            my $date = "$1-$2-$3";
-            push (@date_dirs, "$date");
-        }
-    }
-}
-
 my @cases_list;
 my %previous_cases_hash;
 my $case_serial_number = 1;
+my @date_dirs = @$date_dirs_list_ptr;
 
 #
 # Make a list of zips to test. Could be only one
@@ -269,7 +248,7 @@ print ("Searching .csv files and collecting data...\n");
 #
 # For each directory specified in dirs.txt, find a .csv file and save records that might be useful
 #
-my @suffixlist = qw (.csv);
+my @suffixlist = qw (.csv .tsv);
 foreach my $dir (@date_dirs) {
     if ($pp_report_data_collection_messages) {
         print ("$dir...\n");
@@ -745,6 +724,9 @@ sub choose_state {
     my $int_any_zip = int ($any_zip);
     if ($int_any_zip >= 10001 && $int_any_zip <= 11697) {
         return ('newyork');
+    }
+    elsif ($int_any_zip >= 20601 && $int_any_zip <= 21921) {
+        return ('maryland');
     }
     else {
         return ('florida');
