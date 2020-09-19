@@ -1,2 +1,11 @@
 Florida/*/desktop.ini
 NewYork/*/desktop.ini
+#
+# Ignore all subdirectories for Maryland. GitHub has .tsv files. The script makes the
+# local date dirs and the .csv files
+#
+Maryland/
+NewYork/byzip-output.csv
+NewYork/graph.gif
+Florida/byzip-output.csv
+Florida/graph.gif
