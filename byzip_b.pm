@@ -13,15 +13,19 @@ sub validate_records {
     my $cases_column_offset = shift;
     my $zip_column_offset = shift;
     my $zip_list_ptr = shift;
-    my $print_stuff = shift;
+    my $make_debug_print_statements = shift;
+
+    # my $make_debug_print_statements = 1;   # VSC debugger is broken :-(
 
     my @possibly_useful_records = @$ptr;
     my @useful_records;
-    
-    my $dir_printed = 0;
 
     foreach my $record (@possibly_useful_records) {
-        $dir_printed = 0;
+        if ($make_debug_print_statements) {
+            # print ("$dir...\n");
+            print ("  \$record = $record\n");
+        }
+
         #
         # Delete fields wrapped in double quotes. They could contain commas
         #
@@ -42,7 +46,7 @@ sub validate_records {
         my @list = split (',', $record);
 
         my $this_zip = $list[$zip_column_offset];
-        if ($print_stuff) {
+        if ($make_debug_print_statements) {
             print ("  \$this_zip = $this_zip\n");
         }
 
@@ -73,7 +77,7 @@ sub validate_records {
         }
 
         my $cases = $list[$cases_column_offset];
-        if ($print_stuff) {
+        if ($make_debug_print_statements) {
             print ("  \$cases = $cases\n");
         }
 
@@ -90,33 +94,18 @@ sub validate_records {
         }
 
         #
-        # If the 1st char is '<', ignore
+        # If the 1st char is '<5', make 0
+        # If '5 to 9', make 7
+        # If something other than a simple number, complain
         #
-        my $first_cases_character = substr ($cases, 0, 1);
-        if ($first_cases_character eq '<') {
-            next;
+        if ($cases eq '<5') {
+            $cases = '0';
         }
-
-        #
-        # If '5 to 9'
-        #
-        if ($cases eq '5 to 9') {
-            # if ($dir_printed == 0) {
-            #     print ("$dir...\n");
-            #     $dir_printed = 1;
-            # }
-
+        elsif ($cases eq '5 to 9') {
             # print ("  Changing '5 to 9' to 7\n");
             $cases = '7';
         }
-
-        #
-        # If something other tha a simple number, complain
-        #
-        if ($cases =~ /[\D]/) {
-            if ($dir_printed == 0) {
-                print ("$dir...\n");
-            }
+        elsif ($cases =~ /[\D]/) {
             print ("  Non numeric found in cases field is $cases\n");
             exit (1);
         }
@@ -124,14 +113,14 @@ sub validate_records {
         #
         # Test for a negative value string. Probably not found anywhere
         #
-        my $negative_value_flag = 0;
-        if ($first_cases_character eq '-') {
-            $negative_value_flag = 1;
-            my $new_cases_string = substr ($cases, 1);
-            $cases = $new_cases_string;
-            print ("Negative value found in cases column\n");
-            exit (1);
-        }
+        # my $negative_value_flag = 0;
+        # if ($first_cases_character eq '-') {
+        #     $negative_value_flag = 1;
+        #     my $new_cases_string = substr ($cases, 1);
+        #     $cases = $new_cases_string;
+        #     print ("Negative value found in cases column\n");
+        #     exit (1);
+        # }
 
         #
         # Update fields and make a new record
