@@ -17,6 +17,15 @@ sub verify_case_list {
     }
 
     my @cases_list = @$case_list_ptr;
+    my $count = @cases_list;
+    if ($count == 0) {
+        print ("  Cases list is empty\n");
+        exit (1);
+    }
+    else {
+        print ("  $count cases\n");
+    }
+
     my $largest_serial = -1;
     my $last_serial;
 

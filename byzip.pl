@@ -25,7 +25,7 @@ use DateTime;
 use List::Util qw (max);
 
 use lib '.';
-use byzip_a;
+# use byzip_a;
 use byzip_b;
 use byzip_c;
 use byzip_v;
@@ -49,7 +49,6 @@ package main;
 #
 my $pp_covid_data_root_dir = 'D:/ByZip';
 my $pp_create_missing_directories = 1;
-my $pp_report_data_collection_messages = 1;
 my $pp_report_sim_messages = 0;
 my $pp_report_adding_case = 0;
 my $pp_dont_do_sims = 0;
@@ -130,11 +129,17 @@ my $untested_positive = 0;
 my $severity = '40:40:20';
 my $plot_output_flag = 0;
 my $max_cured = 0;
+my $report_data_collection_messages = 0;  # default 'no'
 
 my $untested_positive_switch = 'untested_positive=';
 my $untested_positive_switch_string_len = length ($untested_positive_switch);
+
 my $max_display_switch = 'cured_max_display=';
 my $max_display_switch_string_len = length ($max_display_switch);
+
+my $report_collection_switch = 'report_collection=';
+my $report_collection_switch_string_len = length ($report_collection_switch);
+
 foreach my $switch (@ARGV) {
     my $lc_switch = lc $switch;
     if (index ($lc_switch, 'zip=') != -1) {
@@ -173,6 +178,10 @@ foreach my $switch (@ARGV) {
     elsif (index ($lc_switch, $untested_positive_switch) != -1) {
         my $val = substr ($switch, $untested_positive_switch_string_len);
         $untested_positive = int ($val);
+    }
+    elsif (index ($lc_switch, $report_collection_switch) != -1) {
+        my $val = substr ($switch, $report_collection_switch_string_len);
+        $report_data_collection_messages = int ($val);
     }
     # elsif (index ($lc_switch, 'non_white=') != -1) {
     #     my $val = substr ($switch, 10);
@@ -243,15 +252,16 @@ else {
 # COLLECT DATA
 # ============
 #
-print ("Searching .csv files and collecting data...\n");
+my $c = @date_dirs;
+print ("Searching for .csv files in $c dirs and collecting data...\n");
 
 #
 # For each directory specified in dirs.txt, find a .csv file and save records that might be useful
 #
 my @suffixlist = qw (.csv .tsv);
 foreach my $dir (@date_dirs) {
-    if ($pp_report_data_collection_messages) {
-        print ("$dir...\n");
+    if ($report_data_collection_messages) {
+        print ("\n$dir...\n");
     }
 
     opendir (DIR, $dir) or die "Can't open $dir: $!";
@@ -287,7 +297,7 @@ foreach my $dir (@date_dirs) {
     close (DIR);
 
     if (!(defined ($found_csv_file))) {
-        if ($pp_report_data_collection_messages) {
+        if ($report_data_collection_messages) {
             print ("  No .csv file found in $dir\n");
         }
         next;
@@ -297,23 +307,24 @@ foreach my $dir (@date_dirs) {
     # Get records reads the .csv file and returns a list of records that _might_ contain
     # useful information
     #
-    my ($cases_column_offset, $zip_column_offset, $ptr) = byzip_a::get_records (
+    my ($cases_column_offset, $zip_column_offset, $ptr) = get_records (
         $found_csv_file,
         \@zip_list,
         $state,
-        $pp_report_data_collection_messages,
+        $report_data_collection_messages,
         $pp_report_header_changes);
 
-    if (!(defined ($cases_column_offset))) {
-        print ("The cases number column offset was not discovered\n");
-        exit (1);
-    }
-    if (!(defined ($zip_column_offset))) {
-        print ("The zip code column offset was not discovered\n");
-        exit (1);
-    }
-    
     my @possibly_useful_records = @$ptr;
+    my $count = @possibly_useful_records;
+    if ($count == 0) {
+        print ("Fatal error. No possibly useful records found\n");
+        print ("  \$cases_column_offset = $cases_column_offset\n");
+        print ("  \$zip_column_offset = $zip_column_offset\n");
+        exit (1);
+    }
+    elsif ($report_data_collection_messages) {
+        print ("  Found $count possibly useful records\n");
+    }
 
     #
     # Process possibly useful records, make list of useful records
@@ -324,14 +335,22 @@ foreach my $dir (@date_dirs) {
         $cases_column_offset,
         $zip_column_offset,
         \@zip_list,
-        $pp_report_data_collection_messages);
+        $report_data_collection_messages);
     my @useful_records = @$ptr;
+    $count = @useful_records;
+    if ($count == 0) {
+        print ("Fatal error. No useful records found\n");
+        exit (1);
+    }
+    elsif ($report_data_collection_messages) {
+        print ("  Found $count useful records\n");
+    }
 
     #
     #
     #
-    if ($pp_report_data_collection_messages) {
-        print ("Process useful records...\n");
+    if ($report_data_collection_messages) {
+        print ("    Process useful records...\n");
     }
 
     foreach my $record (@useful_records) {
@@ -400,7 +419,7 @@ foreach my $dir (@date_dirs) {
                 }
                 else {
                     my $serial = $hash_ptr->{'serial'};
-                    if ($pp_report_data_collection_messages) {
+                    if ($report_data_collection_messages) {
                         print ("  Deleting case with serial = $serial\n");
                     }
                     $new_cases++;
@@ -420,11 +439,12 @@ foreach my $dir (@date_dirs) {
         # Generate new cases
         # ------------------
         #
-        if ($pp_report_data_collection_messages) {
-            print ("  New cases for $zip_from_this_record = $new_cases, total now $int_cases\n");
+        if ($report_data_collection_messages) {
+            print ("    New cases for $zip_from_this_record = $new_cases, total now $int_cases\n");
+            print ("    \$dir = $dir\n");
         }
 
-        if ($dir =~ /^(\d{4})-(\d{2})-(\d{2})/) {
+        if ($dir =~ /(\d{4})-(\d{2})-(\d{2})/) {
             my $begin_dt = DateTime->new(
                 year       => $1,
                 month      => $2,
@@ -450,13 +470,28 @@ foreach my $dir (@date_dirs) {
                 # Add random values to case
                 #
                 byzip_make_random_choices::add_random (
-                    \%hash, $pp_enable_use_of_owid_mortality_data, \%mortality_table,
-                    $mortality, $duration_max, $duration_min,
-                    $pp_report_data_collection_messages, $pp_report_adding_case);
+                    \%hash,
+                    $pp_enable_use_of_owid_mortality_data,
+                    \%mortality_table,
+                    $mortality,
+                    $duration_max,
+                    $duration_min,
+                    $report_data_collection_messages,
+                    $pp_report_adding_case);
 
                 push (@cases_list, \%hash);
             }
+
         }
+        else {
+            print ("Can not determine date\n");
+            exit (1);
+        }
+    }
+        
+    if ($report_data_collection_messages) {
+        my $c = @cases_list;
+        print ("    Case list count = $c\n");
     }
 }
 
@@ -527,7 +562,7 @@ if ($untested_positive > 0) {
                 byzip_make_random_choices::add_random (
                     \%hash, $pp_enable_use_of_owid_mortality_data,
                     \%mortality_table, $mortality, $duration_max, $duration_min,
-                    $pp_report_data_collection_messages, $pp_report_adding_case);
+                    $report_data_collection_messages, $pp_report_adding_case);
                 
                 push (@cases_list, \%hash);
 
@@ -550,6 +585,7 @@ if ($untested_positive > 0) {
     my @new_cases_list = sort case_sort_routine (@cases_list);
     @cases_list = @new_cases_list;
     $count = @cases_list;
+
     #
     # 
     #
@@ -594,7 +630,8 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
             \%mortality_table,
             $mortality,
             $duration_max, $duration_min,
-            $pp_report_data_collection_messages, $pp_report_adding_case);
+            $report_data_collection_messages,
+            $pp_report_adding_case);
     }
 
     my $ptr = byzip_c::process (\@cases_list, $last_serial, \@debug_cases_list, $pp_report_sim_messages);
@@ -734,3 +771,162 @@ sub choose_state {
 }
 
 
+#
+# Given a file name and a list of zip code strings, return any record (row) that
+# contains anything string of characters that might be a zip code
+#
+# While looking at the 1st record, find the offsets (column numbers) for various
+# items of interest
+#
+sub get_records {
+    my $found_csv_file = shift;
+    my $zip_list_ptr = shift;
+    my $state = shift;
+    my $report_data_collection_messages = shift;
+    my $report_header_changes = shift;
+
+    my $record_number = 0;
+    my $header_string;
+    my @header_list;
+    my $cases_column_offset;
+    my $zip_column_offset;
+    my $reference_header_string;
+    my @reference_header_list;
+    my @possibly_useful_records;
+
+    if ($report_data_collection_messages) {
+        print ("  get_records() is using:\n");
+        foreach my $zip_to_test (@$zip_list_ptr) {
+            print ("    $zip_to_test\n");
+        }
+    }
+
+    open (FILE, "<", $found_csv_file) or die "Can't open $found_csv_file: $!";
+    while (my $record = <FILE>) {
+        $record_number++;
+        chomp ($record);
+
+        if ($record_number == 1) {
+            my $changed_flag = 0;
+            my $initial_flag = 0;
+
+            #
+            # Remove BOM if any
+            #
+            if ($record =~ /^\xef\xbb\xbf/) {
+                $header_string = substr ($record, 3);
+            }
+            elsif ($record =~ /^\xfe\xff\x00\x30\x00\x20\x00\x48\x00\x45\x00\x41\x00\x44/) {
+                print ("  File is Unicode\n");
+                die;
+            }
+            else {
+                $header_string = $record;
+            }
+
+            if (!(defined ($reference_header_string))) {
+                $reference_header_string = $header_string;
+                @reference_header_list = split (',', $header_string);
+                $initial_flag = 1;
+            }
+
+            if ($header_string ne $reference_header_string) {
+                $reference_header_string = $header_string;
+                @reference_header_list = split (',', $header_string);
+                undef ($zip_column_offset);
+                undef ($cases_column_offset);
+                $changed_flag = 1;
+            }
+
+            my $len = @reference_header_list;
+            for (my $j = 0; $j < $len; $j++) {
+                my $h = lc $reference_header_list[$j];
+                if ($h eq 'cases_1') {
+                    $cases_column_offset = $j;
+                }
+                elsif ($h eq 'cases') {
+                    $cases_column_offset = $j;
+                }
+                elsif ($h eq 'covid_case_count') {
+                    $cases_column_offset = $j;
+                }
+                elsif ($h eq 'positive') {
+                    $cases_column_offset = $j;
+                }
+                elsif ($h eq 'zip') {
+                    $zip_column_offset = $j;
+                }
+                elsif ($h eq 'zipx') {
+                    $zip_column_offset = $j;
+                }
+                elsif ($h eq 'modified_zcta') {
+                    $zip_column_offset = $j;
+                }
+                elsif ($h eq 'modzcta') {
+                    $zip_column_offset = $j;
+                }
+            }
+
+            if (!(defined ($zip_column_offset))) {
+                print ("Zip column offset not discovered in header\n");
+                print ("  Have:\n");
+                foreach my $h (@reference_header_list) {
+                    print ("    $h\n");
+                }
+                exit (1);
+            }
+
+            if ($report_data_collection_messages && $report_header_changes) {
+                if ($changed_flag) {
+                    print ("  Header change:\n");
+                    print ("    'cases_1' offset is $cases_column_offset\n");
+                    print ("    'zip' offset is $zip_column_offset\n");
+                }
+                elsif ($initial_flag) {
+                    print ("  Initial header:\n");
+                    print ("    'cases_1' offset is $cases_column_offset\n");
+                    print ("    'zip' offset is $zip_column_offset\n");
+                }
+            }
+
+            next;
+        }
+        
+        #
+        # Search for any instance of any of the zipcode string characters
+        # Could be part of some totally unrelated number
+        #
+        my $found_zip_like_string = 0;
+        foreach my $zip_to_test (@$zip_list_ptr) {
+            my $j = index ($record, $zip_to_test);
+            if ($j != -1) {
+                # print ("  Found $zip_to_test in \"$record\"\n");
+                $found_zip_like_string = 1;
+                # last;
+            }
+            else {
+                # print ("  Did not find $zip_to_test in \"$record\"\n");
+            }
+        }
+
+        if ($found_zip_like_string == 0) {
+            next;
+        }
+
+        # print ("  Saving \"$record\"\n");
+        push (@possibly_useful_records, $record);
+    }
+
+    close (FILE);
+
+    if (!(defined ($cases_column_offset))) {
+        print ("The cases number column offset was not discovered\n");
+        exit (1);
+    }
+    if (!(defined ($zip_column_offset))) {
+        print ("The zip code column offset was not discovered\n");
+        exit (1);
+    }
+    
+    return ($cases_column_offset, $zip_column_offset, \@possibly_useful_records);
+}
