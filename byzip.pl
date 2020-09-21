@@ -235,7 +235,8 @@ my @csv_files;
 #
 # Select state, pick directories, inventory directories, make missing directories
 #
-my ($status, $dir, $date_dirs_list_ptr) = byzip_setup::setup ($state, $pp_create_missing_directories);
+my ($status, $dir, $date_dirs_list_ptr) = byzip_setup::setup (
+    $state, $pp_create_missing_directories, $pp_output_file_name);
 if ($status == 0) {
     exit (1);
 }
@@ -342,6 +343,7 @@ foreach my $dir (@date_dirs) {
     #
     $ptr = validate_possibly_useful_records (
         $dir,
+        $found_csv_file,
         \@possibly_useful_records,
         $cases_column_offset,
         $zip_column_offset,
@@ -350,8 +352,9 @@ foreach my $dir (@date_dirs) {
     my @useful_records = @$ptr;
     $count = @useful_records;
     if ($count == 0) {
-        print ("Fatal error. No useful records found\n");
-        exit (1);
+        # print ("Fatal error. No useful records found\n");
+        # exit (1);
+        next;
     }
     elsif ($report_data_collection_messages) {
         print ("  Found $count useful records\n");
@@ -1046,6 +1049,7 @@ sub predict_case_is_fatal {
 
 sub validate_possibly_useful_records {
     my $dir = shift;
+    my $csv_file_name = shift;
     my $ptr = shift;
     my $cases_column_offset = shift;
     my $zip_column_offset = shift;
@@ -1081,14 +1085,18 @@ sub validate_possibly_useful_records {
                 }
 
                 my $len = $right_double_quote - $left_double_quote;
-                my $temp = substr ($record, $left_double_quote, $len + 1);
+                my $temp = substr ($record, $left_double_quote + 1, $len - 1);
 
-                $temp =~ s/,/-/;
+                # print ("  \$temp = $temp\n");
+
+                $temp =~ s/, /-/g;
+                $temp =~ s/,/-/g;
 
                 my $left_half = substr ($record, 0, $left_double_quote);
                 my $right_half = substr ($record, $right_double_quote + 1);
 
                 $record = $left_half . $temp . $right_half;
+                # print ("  \$record = $record\n");
             }
             else {
                 $delete_done = 1;
@@ -1130,6 +1138,17 @@ sub validate_possibly_useful_records {
         }
 
         my $cases = $list[$cases_column_offset];
+        if (!(defined ($cases))) {
+            if ($make_debug_print_statements) {
+                print ("Did not extract any value for cases\n");
+                print ("  File: $csv_file_name\n");
+                print ("  \$cases_column_offset = $cases_column_offset\n");
+                print ("  \$record = \"$record\"\n");
+            }
+                # exit (1);
+            next;
+        }
+
         if ($make_debug_print_statements) {
             print ("  \$cases = $cases\n");
         }

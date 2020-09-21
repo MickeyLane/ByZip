@@ -82,15 +82,16 @@ sub verify_case_list {
             }
         }
 
-        my $end_dt = $tc->{'end_dt'};
-        $last_case_string = main::make_printable_date_string ($end_dt);
+        # my $end_dt = $tc->{'end_dt'};
+        # $last_case_string = main::make_printable_date_string ($end_dt);
+
         my $s = $tc->{'serial'};
         if ($s > $largest_serial) {
             $largest_serial = $s;
         }
     }
 
-    print ("  Last simulation date ends $last_case_string\n");
+    # print ("  Last simulation date ends $last_case_string\n");
 
     print ("  Verify complete\n");
 

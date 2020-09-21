@@ -11,6 +11,7 @@ use Cwd qw(cwd);
 use POSIX;
 use File::chdir;
 use File::Basename qw(fileparse);
+use File::Copy qw(move);
 
 #
 # Edit the following as needed. If you are using Linux, ignore '_windows' and vice versa
@@ -21,14 +22,18 @@ my $fq_newyork_root_dir_for_windows = 'D:/ByZip/NewYork';
 my $fq_newyork_root_dir_for_linux = '/home/mickey/ByZip/NewYork';
 my $fq_maryland_root_dir_for_windows = 'D:/ByZip/Maryland';
 my $fq_maryland_root_dir_for_linux = '/home/mickey/ByZip/Maryland';
+my $fq_northcarolina_root_dir_for_windows = 'D:/ByZip/NorthCarolina';
+my $fq_northcarolina_root_dir_for_linux = '/home/mickey/ByZip/NorthCarolina';
 
 my $pp_first_florida_directory = '2020-04-08';
 my $pp_first_newyork_directory = '2020-03-31';
 my $pp_first_maryland_directory = '2020-04-12';
+my $pp_first_northcarolina_directory = '2020-05-01';
 
 sub setup {
     my $state = shift;
     my $create_missing_directories_flag = shift;
+    my $output_file_name = shift;
 
     my $dir;
     my $first_dir;
@@ -76,6 +81,16 @@ sub setup {
         $dir = lc $fq_maryland_root_dir_for_linux;
         $first_dir = "$dir/$pp_first_maryland_directory";
         $first_dir_date_string = $pp_first_maryland_directory;
+    }
+    elsif ($windows_flag && $state eq 'northcarolina') {
+        $dir = lc $fq_northcarolina_root_dir_for_windows;
+        $first_dir = "$dir/$pp_first_northcarolina_directory";
+        $first_dir_date_string = $pp_first_northcarolina_directory;
+    }
+    elsif ($windows_flag == 0 && $state eq 'northcarolina') {
+        $dir = lc $fq_northcarolina_root_dir_for_linux;
+        $first_dir = "$dir/$pp_first_northcarolina_directory";
+        $first_dir_date_string = $pp_first_northcarolina_directory;
     }
     else {
         print ("Can't figure out base \$dir\n");
@@ -169,8 +184,26 @@ sub setup {
 
                     unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
                 }
-            }
+                else {
+                    print ("Don't know what to do with $fq_fn\n");
+                    exit (1);
+                }
 
+            }
+            elsif ($suffix eq '.csv') {
+                if ("$name.csv" eq $output_file_name) {
+                    next;
+                }
+
+                if ($fn =~ /nc_zip(\d{2})(\d{2})/) {
+                    my $new_dir = "$dir/2020-$1-$2";
+                    move ($fq_fn, $new_dir) or die "Can't move $fq_fn";
+                }
+                else {
+                    print ("Don't know what to do with $fq_fn\n");
+                    exit (1);
+                }
+            }
         }
     }
 

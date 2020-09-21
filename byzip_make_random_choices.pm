@@ -11,9 +11,6 @@ use LWP::Simple;
 
 sub add_random {
     my $hash_ptr = shift;
-    my $enable_use_of_owid_mortality_data = shift;
-    my $mortality_table_ptr = shift;
-    my $fixed_mortality = shift;
     my $duration_max = shift;
     my $duration_min = shift;
     my $report_data_collection_messages = shift;
@@ -27,29 +24,17 @@ sub add_random {
     $hash_ptr->{'sim_state'} = 'not started';
 
     #
-    # Determine if this patient is going to die
+    # If this patient has already been selected as one who is going to die, ignore here
     #
-    if (predict_case_is_fatal (
-            $enable_use_of_owid_mortality_data,
-            $mortality_table_ptr, $fixed_mortality, $local_begin_dt)) {
-        #
-        # Case is fatal. Assume 5-10 days sick
-        #
-        my $span = 6;
-        my $length_of_sickness_for_this_case = 5 + int (rand ($span) + 1);
-
-        my $sickness_dur = DateTime::Duration->new (
-            days        => $length_of_sickness_for_this_case);
-
-        my $end_dt = $local_begin_dt->clone();
-        $end_dt->add_duration ($sickness_dur);
-
-        $hash_ptr->{'ending_status'} = 'dead';
-        $hash_ptr->{'end_dt'} = $end_dt;
-        $hash_ptr->{'severity'} = 'fatal';
-
-        goto end_of_random_assignments;
+    if (exists ($hash_ptr->{'ending_status'})) {
+        if ($hash_ptr->{'ending_status'} eq 'dead') {
+            return;
+        }
     }
+    #
+    # This case is cured eventually. Figure out 'eventually'
+    #
+    my $span = $duration_max - $duration_min + 1;
 
     #
     # From Google quoting a rather old WHO report:
@@ -57,31 +42,36 @@ sub add_random {
     # Severity:
     #
     #   Asymptomatic = 50%
-    #   Mild = 30%
-    #   Severe = 15%
+    #   Mild = 29%
+    #   Severe = 14%
     #   Critical = 5%
-    #
+    #   Longterm = 2%
     #
     my $severity;
     my $rand_result = int (rand (100) + 1);  # 1..100
     if ($rand_result <= 50) {
         $severity = 'asymptomatic';
     }
-    elsif ($rand_result <= 80) {
+    elsif ($rand_result <= 79) {   # 50 + 29
         $severity = 'mild';
     }
-    elsif ($rand_result <= 95) {
+    elsif ($rand_result <= 93) {   # 50 + 29 + 14
         $severity = 'severe';
     }
-    else {
+    elsif ($rand_result <= 98) {   # 50 + 29 + 14 + 5
         $severity = 'critical';
     }
+    else {
+        $severity = 'longterm';
+    }
 
-    #
-    # It's cured eventually. Figure out 'eventually'
-    #
-    my $span = $duration_max - $duration_min + 1;
-    my $length_of_sickness_for_this_case = $duration_min + int (rand ($span) + 1);
+    my $length_of_sickness_for_this_case;
+    if ($severity ne '') {
+        $length_of_sickness_for_this_case = $duration_min + int (rand ($span) + 1);
+    }
+    else {
+        $length_of_sickness_for_this_case = 80;  # use 80 days
+    }
 
     my $sickness_dur = DateTime::Duration->new (
         days        => $length_of_sickness_for_this_case);
@@ -96,8 +86,6 @@ sub add_random {
     $hash_ptr->{'ending_status'} = 'cured';
     $hash_ptr->{'severity'} = 'fatal';
 
-end_of_random_assignments:
-
     if ($report_data_collection_messages && $report_adding_case) {
         #
         # Debug...
@@ -110,51 +98,6 @@ end_of_random_assignments:
             $e->year(), $e->month(), $e->day());
 
         print ("  Adding case \"$debug_string\"\n");
-    }
-}
-
-#
-# Return yes (1) or no (0)
-#
-sub predict_case_is_fatal {
-    my $enable_use_of_owid_mortality_data = shift;
-    my $mortality_table_ptr = shift;
-    my $fixed_mortality = shift;
-    my $local_begin_dt = shift;
-
-    my $mortality;
-
-    if ($enable_use_of_owid_mortality_data) {
-        my $key = main::make_printable_date_string ($local_begin_dt);
-        my $fp_val = $mortality_table_ptr->{$key};
-        if (!(defined ($fp_val))) {
-            print ("No value found in mortality hash table for $key\n");
-            exit (1);
-        }
-
-        $mortality = $fp_val;
-    }
-    else {
-        $mortality = $fixed_mortality;
-    }
-
-    my $mortality_x_10 = int ($mortality * 10);
-
-    #
-    # Get a random value between 1 and 1000 inclusive
-    #
-    my $random_mortality = int (rand (1000) + 1);
-    if ($random_mortality <= $mortality_x_10) {
-        #
-        # Dies
-        #
-        return (1);
-    }
-    else {
-        #
-        # Lives
-        #
-        return (0);
     }
 }
 
