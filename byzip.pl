@@ -26,7 +26,7 @@ use List::Util qw (max);
 
 use lib '.';
 # use byzip_a;
-use byzip_b;
+# use byzip_b;
 use byzip_c;
 use byzip_v;
 use byzip_plot;
@@ -37,6 +37,9 @@ use byzip_make_random_choices;
 
 package main;
 
+#
+# SET PROGRAM PARAMETERS
+# ======================
 #
 # Any variable that begins with 'fq_' is supposed to contain a fully qualified file name
 # Any variable that begins with 'pp_' is a program parameter and is usually a flag to enable
@@ -70,8 +73,8 @@ my $todays_date_string_for_file_names = sprintf ("%04d %02d %02d",
                 $now->day());
 
 #
-# MORTALITY
-# =========
+# SET UP MORTALITY VALUES
+# =======================
 #
 my $mortality = 3.1;
 my %mortality_table;
@@ -117,8 +120,8 @@ if ($pp_enable_use_of_owid_mortality_data) {
 }
 
 #
-# ARGUMENTS
-# =========
+# COMMAND LINE ARGUMENTS
+# ======================
 #
 my $zip_string;
 my $duration_min = 9;
@@ -129,6 +132,7 @@ my $untested_positive = 0;
 my $severity = '40:40:20';
 my $plot_output_flag = 0;
 my $max_cured = 0;
+my $max_cured_line_number = __LINE__;
 my $report_data_collection_messages = 0;  # default 'no'
 
 my $untested_positive_switch = 'untested_positive=';
@@ -187,6 +191,10 @@ foreach my $switch (@ARGV) {
     #     my $val = substr ($switch, 10);
     #     $non_white = int ($val);
     # }
+    elsif ($lc_switch eq 'help' || $lc_switch eq 'h') {
+        print_help ($duration_min, $duration_max);
+        exit (1);
+    }
     else {
         print ("Don't know what to do with $switch\n");
         exit (1);
@@ -195,7 +203,10 @@ foreach my $switch (@ARGV) {
 
 my $state = choose_state ($zip_string);
 
-
+#
+# REPORT SIMULATION PARAMETERS
+# ============================
+#
 print ("Simulation values:\n");
 print ("  Zip = $zip_string\n");
 print ("  State = $state\n");
@@ -258,7 +269,7 @@ print ("Searching for .csv files in $c dirs and collecting data...\n");
 #
 # For each directory specified in dirs.txt, find a .csv file and save records that might be useful
 #
-my @suffixlist = qw (.csv .tsv);
+my @suffixlist = qw (.csv);
 foreach my $dir (@date_dirs) {
     if ($report_data_collection_messages) {
         print ("\n$dir...\n");
@@ -307,7 +318,7 @@ foreach my $dir (@date_dirs) {
     # Get records reads the .csv file and returns a list of records that _might_ contain
     # useful information
     #
-    my ($cases_column_offset, $zip_column_offset, $ptr) = get_records (
+    my ($cases_column_offset, $zip_column_offset, $ptr) = get_possibly_useful_records (
         $found_csv_file,
         \@zip_list,
         $state,
@@ -329,7 +340,7 @@ foreach my $dir (@date_dirs) {
     #
     # Process possibly useful records, make list of useful records
     #
-    $ptr = byzip_b::validate_records (
+    $ptr = validate_possibly_useful_records (
         $dir,
         \@possibly_useful_records,
         $cases_column_offset,
@@ -469,15 +480,12 @@ foreach my $dir (@date_dirs) {
                 #
                 # Add random values to case
                 #
-                byzip_make_random_choices::add_random (
-                    \%hash,
-                    $pp_enable_use_of_owid_mortality_data,
-                    \%mortality_table,
-                    $mortality,
-                    $duration_max,
-                    $duration_min,
-                    $report_data_collection_messages,
-                    $pp_report_adding_case);
+                # byzip_make_random_choices::add_random (
+                #     \%hash,
+                #     $duration_max,
+                #     $duration_min,
+                #     $report_data_collection_messages,
+                #     $pp_report_adding_case);
 
                 push (@cases_list, \%hash);
             }
@@ -495,11 +503,6 @@ foreach my $dir (@date_dirs) {
     }
 }
 
-#
-# 
-#
-my ($last_serial, $largest_serial) = byzip_v::verify_case_list (\@cases_list);
-
 my $debug_cases_list_ptr = byzip_debug::make_case_list (\@cases_list);
 my @debug_cases_list = @$debug_cases_list_ptr;
 
@@ -508,10 +511,14 @@ my @debug_cases_list = @$debug_cases_list_ptr;
 # ======================
 #
 my $count = @cases_list;
+if ($count == 0) {
+    print ("List count is zero\n");
+    exit (1);
+}
 my $untested_positive_case_count = 0;
 my $temp_hash_ptr = $cases_list[0];
 my $first_simulation_dt = $temp_hash_ptr->{'begin_dt'};
-my $first_simulation_dt_epoch = $first_simulation_dt->epoch();;
+my $first_simulation_dt_epoch = $first_simulation_dt->epoch();
 
 if ($untested_positive > 0) {
     print ("Adding untested positive cases...\n");
@@ -559,10 +566,12 @@ if ($untested_positive > 0) {
                 $hash{'untested_positive'} = 1;
                 $hash{'sim_state'} = 'not started';
 
-                byzip_make_random_choices::add_random (
-                    \%hash, $pp_enable_use_of_owid_mortality_data,
-                    \%mortality_table, $mortality, $duration_max, $duration_min,
-                    $report_data_collection_messages, $pp_report_adding_case);
+                # byzip_make_random_choices::add_random (
+                #     \%hash,
+                #     $duration_max,
+                #     $duration_min,
+                #     $report_data_collection_messages,
+                #     $pp_report_adding_case);
                 
                 push (@cases_list, \%hash);
 
@@ -589,15 +598,52 @@ if ($untested_positive > 0) {
     #
     # 
     #
-    ($last_serial, $largest_serial) = byzip_v::verify_case_list (\@cases_list);
+    # ($last_serial, $largest_serial) = byzip_v::verify_case_list (\@cases_list);
 
     $debug_cases_list_ptr = byzip_debug::make_case_list (\@cases_list);
     @debug_cases_list = @$debug_cases_list_ptr;
 }
 
+#
+# 
+#
+my ($last_serial, $largest_serial) = byzip_v::verify_case_list (\@cases_list);
 
 print ("Have $count cases of which $untested_positive_case_count are untested positives\n");
 print ("Last serial = $last_serial, largest = $largest_serial\n");
+
+#
+# DETERMINE FATAL CASES
+# =====================
+#
+foreach my $case_hash_ptr (@cases_list) {
+    my $begin_dt = $case_hash_ptr->{'begin_dt'};
+
+    #
+    # Determine if this patient is going to die
+    #
+    if (predict_case_is_fatal (
+            $pp_enable_use_of_owid_mortality_data,
+            \%mortality_table,
+            $mortality,
+            $begin_dt)) {
+        #
+        # Case is fatal. Assume 5-10 days sick
+        #
+        my $span = 6;
+        my $length_of_sickness_for_this_case = 5 + int (rand ($span) + 1);
+
+        my $sickness_dur = DateTime::Duration->new (
+            days        => $length_of_sickness_for_this_case);
+
+        my $end_dt = $begin_dt->clone();
+        $end_dt->add_duration ($sickness_dur);
+
+        $case_hash_ptr->{'ending_status'} = 'dead';
+        $case_hash_ptr->{'end_dt'} = $end_dt;
+        $case_hash_ptr->{'severity'} = 'fatal';
+    }
+}
 
 #
 # PROCESS CASES
@@ -626,9 +672,6 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
     foreach my $case_hash_ptr (@cases_list) {
         byzip_make_random_choices::add_random (
             $case_hash_ptr,
-            $pp_enable_use_of_owid_mortality_data,
-            \%mortality_table,
-            $mortality,
             $duration_max, $duration_min,
             $report_data_collection_messages,
             $pp_report_adding_case);
@@ -730,14 +773,25 @@ sub case_sort_routine {
     return (DateTime->compare ($a_dt, $b_dt));
 }
 
-
 sub make_printable_date_string {
     my $dt = shift;
+
+    if (!(defined ($dt))) {
+        goto graveyard;
+    }
 
     my $string = sprintf ("%04d-%02d-%02d",
         $dt->year(), $dt->month(), $dt->day());
 
     return ($string);
+
+graveyard:
+    print ("Software error in make_printable_date_string(). Caller info:\n");
+    my ( $package, $file, $line ) = caller();
+    print ("  \$package = $package\n");
+    print ("  \$file = $file\n");
+    print ("  \$line = $line\n");
+    exit (1);
 }
 
 sub choose_state {
@@ -765,20 +819,22 @@ sub choose_state {
     elsif ($int_any_zip >= 20601 && $int_any_zip <= 21921) {
         return ('maryland');
     }
+    elsif ($int_any_zip >= 27006 && $int_any_zip <= 28608) {
+        return ('northcarolina');
+    }
     else {
         return ('florida');
     }
 }
 
-
 #
-# Given a file name and a list of zip code strings, return any record (row) that
-# contains anything string of characters that might be a zip code
+# Given a file name (...csv) and a list of zip code strings, return any record (row) that
+# contains any string of characters that might be one of the zip codes
 #
 # While looking at the 1st record, find the offsets (column numbers) for various
 # items of interest
 #
-sub get_records {
+sub get_possibly_useful_records {
     my $found_csv_file = shift;
     my $zip_list_ptr = shift;
     my $state = shift;
@@ -795,7 +851,7 @@ sub get_records {
     my @possibly_useful_records;
 
     if ($report_data_collection_messages) {
-        print ("  get_records() is using:\n");
+        print ("  get_possibly_useful_records() is using:\n");
         foreach my $zip_to_test (@$zip_list_ptr) {
             print ("    $zip_to_test\n");
         }
@@ -865,13 +921,25 @@ sub get_records {
                 elsif ($h eq 'modzcta') {
                     $zip_column_offset = $j;
                 }
+                elsif ($h eq 'zipcode') {
+                    $zip_column_offset = $j;
+                }
             }
 
-            if (!(defined ($zip_column_offset))) {
-                print ("Zip column offset not discovered in header\n");
-                print ("  Have:\n");
+            if (!(defined ($zip_column_offset)) || !(defined ($cases_column_offset))) {
+                if (!(defined ($cases_column_offset))) {
+                    print ("Cases column offset not discovered in header\n");
+                }
+                else {
+                    print ("Zip column offset not discovered in header\n");
+                }
+                print ("  Found the columns: (double quotes added)\n");
                 foreach my $h (@reference_header_list) {
-                    print ("    $h\n");
+                    print ("    \"$h\"\n");
+                }
+                print ("  File: $found_csv_file\n");
+                if (defined ($cases_column_offset)) {
+                    print ("  Cases column offset is $cases_column_offset\n");
                 }
                 exit (1);
             }
@@ -919,14 +987,241 @@ sub get_records {
 
     close (FILE);
 
-    if (!(defined ($cases_column_offset))) {
-        print ("The cases number column offset was not discovered\n");
-        exit (1);
-    }
-    if (!(defined ($zip_column_offset))) {
-        print ("The zip code column offset was not discovered\n");
-        exit (1);
-    }
+    # if (!(defined ($cases_column_offset))) {
+    #     print ("The cases number column offset was not discovered\n");
+    #     exit (1);
+    # }
+    # if (!(defined ($zip_column_offset))) {
+    #     print ("The zip code column offset was not discovered\n");
+    #     exit (1);
+    # }
     
     return ($cases_column_offset, $zip_column_offset, \@possibly_useful_records);
+}
+
+#
+# Return yes (1) or no (0)
+#
+sub predict_case_is_fatal {
+    my $enable_use_of_owid_mortality_data = shift;
+    my $mortality_table_ptr = shift;
+    my $fixed_mortality = shift;
+    my $local_begin_dt = shift;
+
+    my $mortality;
+
+    if ($enable_use_of_owid_mortality_data) {
+        my $key = main::make_printable_date_string ($local_begin_dt);
+        my $fp_val = $mortality_table_ptr->{$key};
+        if (!(defined ($fp_val))) {
+            print ("No value found in mortality hash table for $key\n");
+            exit (1);
+        }
+
+        $mortality = $fp_val;
+    }
+    else {
+        $mortality = $fixed_mortality;
+    }
+
+    my $mortality_x_10 = int ($mortality * 10);
+
+    #
+    # Get a random value between 1 and 1000 inclusive
+    #
+    my $random_mortality = int (rand (1000) + 1);
+    if ($random_mortality <= $mortality_x_10) {
+        #
+        # Dies
+        #
+        return (1);
+    }
+    else {
+        #
+        # Lives
+        #
+        return (0);
+    }
+}
+
+sub validate_possibly_useful_records {
+    my $dir = shift;
+    my $ptr = shift;
+    my $cases_column_offset = shift;
+    my $zip_column_offset = shift;
+    my $zip_list_ptr = shift;
+    my $make_debug_print_statements = shift;
+
+    # my $make_debug_print_statements = 1;   # VSC debugger is broken :-(
+
+    my @possibly_useful_records = @$ptr;
+    my @useful_records;
+
+    foreach my $record (@possibly_useful_records) {
+        if ($make_debug_print_statements) {
+            # print ("$dir...\n");
+            print ("  \$record = $record\n");
+        }
+
+        #
+        # If a field is wrapped in double quotes and it contains commas within the quotes,
+        # convert the commas to dashes and delete the double quotes
+        #
+        # This needs to be done prior to the split below or the commas will mess up the
+        # count of columns for the record
+        #
+        my $delete_done = 0;
+        while (!$delete_done) {
+            my $left_double_quote = index ($record, '"');
+            if ($left_double_quote != -1) {
+                my $right_double_quote = index ($record, '"', $left_double_quote + 1);
+                if ($right_double_quote == -1) {
+                    print ("Record has a single double quote\n");
+                    exit (1);
+                }
+
+                my $len = $right_double_quote - $left_double_quote;
+                my $temp = substr ($record, $left_double_quote, $len + 1);
+
+                $temp =~ s/,/-/;
+
+                my $left_half = substr ($record, 0, $left_double_quote);
+                my $right_half = substr ($record, $right_double_quote + 1);
+
+                $record = $left_half . $temp . $right_half;
+            }
+            else {
+                $delete_done = 1;
+            }
+        }
+
+        my @list = split (',', $record);
+
+        my $this_zip = $list[$zip_column_offset];
+        if ($make_debug_print_statements) {
+            print ("  \$this_zip = $this_zip\n");
+        }
+
+        #
+        # Zips can be given as 'Hillsborough-33540' or '"27016"' etc.
+        # Only the 5 digits are of interest
+        # Replace the column value with just the 5 digits below
+        #
+        my $zip_from_this_record;
+        my $zip_is_good = 0;
+        if ($this_zip =~ /(\d{5})/) {
+            $zip_from_this_record = $1;
+            foreach my $zip_to_test (@$zip_list_ptr) {
+                if ($zip_to_test == $zip_from_this_record) {
+                    $zip_is_good = 1;
+                    # last;
+                }
+            }
+        }
+        else {
+            print ("Unable to locate 5 consecutive digits in what is supposed to be the zip code column\n");
+            print ("  \$record = $record\n");
+            print ("  \$this_zip = $this_zip\n");
+            exit (1);
+        }
+
+        if (!$zip_is_good) {
+            next;
+        }
+
+        my $cases = $list[$cases_column_offset];
+        if ($make_debug_print_statements) {
+            print ("  \$cases = $cases\n");
+        }
+
+        if (length ($cases) eq 0) {
+            print ("  Null cases column found at offset $cases_column_offset\n");
+            exit (1);
+        }
+
+        #
+        # If the cases value is wrapped in double quotes, remove them
+        #
+        if ($cases =~ /^\"/ && $cases =~ /\"\z/) {
+            my $new_cases = substr ($cases, 1, length ($cases) - 2);
+            $cases = $new_cases;
+        }
+
+        #
+        # If cases equal zero, ignore
+        #
+        if ($cases eq '0') {
+            next;
+        }
+
+        #
+        # If the 1st char is '<5', make 0
+        # If '5 to 9', make 7
+        # If something other than a simple number, complain
+        #
+        if ($cases eq '<5') {
+            $cases = '0';
+        }
+        elsif ($cases eq '5 to 9') {
+            # print ("  Changing '5 to 9' to 7\n");
+            $cases = '7';
+        }
+        elsif ($cases =~ /[\D]/) {
+            print ("  Non numeric found in cases field is $cases\n");
+            exit (1);
+        }
+
+        #
+        # Test for a negative value string. Probably not found anywhere
+        #
+        # my $negative_value_flag = 0;
+        # if ($first_cases_character eq '-') {
+        #     $negative_value_flag = 1;
+        #     my $new_cases_string = substr ($cases, 1);
+        #     $cases = $new_cases_string;
+        #     print ("Negative value found in cases column\n");
+        #     exit (1);
+        # }
+
+        #
+        # Update fields and make a new record
+        #
+        $list[$cases_column_offset] = $cases;
+        $list[$zip_column_offset] = $zip_from_this_record;
+        my $new_record = join (',', @list);
+        push (@useful_records, $new_record);
+    }
+
+    return (\@useful_records);
+}
+
+sub print_help {
+    my ($min, $max) = @_;
+
+    print ("\nByZip zip=nnnnn[,nnnnn] [additional switches]\n");
+
+    print ("\n  zip=nnnnn\n");
+    print ("    Required. May be multiple zips seperated by commas from a single state.\n");
+
+    print ("\n  untested_positive=n[n]\n");
+    print ("    Causes an additional n cases to be generated for each new reported case\n");
+    print ("    These cases are shown in blue on the output graph. Default is zero.\n");
+
+
+    print ("\n  cured_max_display=nnnnnnn\n");
+    print ("    Limits the max number of cured cases shown on the output graph. Cured cases\n");
+    print ("    generally greatly outnumber the other values presented on the graph. Cured\n");
+    print ("    cases are shown in green on the graph. Default is currently zero. See line\n");
+    print ("    $max_cured_line_number in ByZip.pl to modify the default value.\n");
+
+    print ("\n  report_collection=[0/1]\n");
+    print ("    Turns on debug output of the data collection from the .csv files. Default off (0)\n");
+
+    print ("\n  duration_min=nn and duration_max=nn\n");
+    print ("    The least/most number of days a person is sick. The random number generator\n");
+    print ("    is used to select a value within the range. Current defaults are $min and $max days.\n");
+
+    print ("\n  mortality=n.n\n");
+    print ("    If the flag \$pp_enable_use_of_owid_mortality_data is set, this switch is not used\n");
+    print ("    This flag is currently set\n");
 }
