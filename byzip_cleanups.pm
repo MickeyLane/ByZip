@@ -78,4 +78,54 @@ sub remove_commas_from_double_quoted_column_values {
         $left_half . $temp . $right_half));
 }
 
+#
+#
+#
+#
+sub cleanup_northcarolina_csv_files {
+    my ($in, $out) = @_;
+
+    my @csv_records;
+    my $record_number = 0;
+    my $column_header_count;
+    my @column_headers;
+
+    open (FILE, "<", $in) or die "Can't open $in: $!";
+    while (my $record = <FILE>) {
+        chomp ($record);
+        $record_number++;
+
+        if ($record_number == 1) {
+            @column_headers = split (',', $record);
+            $column_header_count = @column_headers;
+            push (@csv_records, $record);
+        }
+        else {
+            $record = remove_double_quotes_from_column_values ($record);
+            $record = remove_commas_from_double_quoted_column_values ($record);
+            my @values = split (',', $record);
+            my $value_count = @values;
+            if ($value_count != $column_header_count) {
+                push (@values, "<5");
+            }
+
+            if ($column_headers[0] eq 'Shape__Length') {
+                $values[0] = 0;
+            }
+            
+            $record = join (',', @values);
+            push (@csv_records, $record);
+        }
+    }
+    close (FILE);
+
+    open (FILE, ">", $out) or die "Can't open $out: $!";
+    foreach my $r (@csv_records) {
+        print (FILE "$r\n");
+    }
+    close (FILE);
+
+    unlink ($in) or die "Can't delete $in: $!";
+}
+
 1;
