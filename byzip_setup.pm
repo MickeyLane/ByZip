@@ -197,7 +197,37 @@ sub setup {
 
                 if ($fn =~ /nc_zip(\d{2})(\d{2})/) {
                     my $new_dir = "$dir/2020-$1-$2";
-                    move ($fq_fn, $new_dir) or die "Can't move $fq_fn";
+                    my $new_file = "$new_dir/converted.csv";
+
+                    if (1) {
+                        move ($fq_fn, $new_dir) or die "Can't move $fq_fn";
+                    }
+                    else {
+                        my @csv_records;
+
+                        open (FILE, "<", $fq_fn) or die "Can't open $fq_fn: $!";
+                        while (my $record = <FILE>) {
+                            chomp ($record);
+
+                            if ($record =~ /(\d{5})\s+(\d+) Cases/) {
+                                push (@csv_records, "$1,$2");
+                            }
+                            else {
+                                print ("in $fq_fn, unexpected .tsv record is $record\n");
+                                exit (1);
+                            }
+                        }
+                        close (FILE);
+
+                        open (FILE, ">", $new_file) or die "Can't open $new_file: $!";
+                        print (FILE "zip,cases\n");
+                        foreach my $r (@csv_records) {
+                            print (FILE "$r\n");
+                        }
+                        close (FILE);
+
+                        unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
+                    }
                 }
                 else {
                     print ("Don't know what to do with $fq_fn\n");

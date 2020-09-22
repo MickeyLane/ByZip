@@ -34,6 +34,7 @@ use byzip_debug;
 use byzip_setup;
 use byzip_mt;
 use byzip_make_random_choices;
+use byzip_cleanups;
 
 package main;
 
@@ -1067,41 +1068,9 @@ sub validate_possibly_useful_records {
             print ("  \$record = $record\n");
         }
 
-        #
-        # If a field is wrapped in double quotes and it contains commas within the quotes,
-        # convert the commas to dashes and delete the double quotes
-        #
-        # This needs to be done prior to the split below or the commas will mess up the
-        # count of columns for the record
-        #
-        my $delete_done = 0;
-        while (!$delete_done) {
-            my $left_double_quote = index ($record, '"');
-            if ($left_double_quote != -1) {
-                my $right_double_quote = index ($record, '"', $left_double_quote + 1);
-                if ($right_double_quote == -1) {
-                    print ("Record has a single double quote\n");
-                    exit (1);
-                }
+        $record = byzip_cleanups::remove_double_quotes_from_column_values ($record);
 
-                my $len = $right_double_quote - $left_double_quote;
-                my $temp = substr ($record, $left_double_quote + 1, $len - 1);
-
-                # print ("  \$temp = $temp\n");
-
-                $temp =~ s/, /-/g;
-                $temp =~ s/,/-/g;
-
-                my $left_half = substr ($record, 0, $left_double_quote);
-                my $right_half = substr ($record, $right_double_quote + 1);
-
-                $record = $left_half . $temp . $right_half;
-                # print ("  \$record = $record\n");
-            }
-            else {
-                $delete_done = 1;
-            }
-        }
+        $record = byzip_cleanups::remove_commas_from_double_quoted_column_values ($record);
 
         my @list = split (',', $record);
 
@@ -1156,14 +1125,6 @@ sub validate_possibly_useful_records {
         if (length ($cases) eq 0) {
             print ("  Null cases column found at offset $cases_column_offset\n");
             exit (1);
-        }
-
-        #
-        # If the cases value is wrapped in double quotes, remove them
-        #
-        if ($cases =~ /^\"/ && $cases =~ /\"\z/) {
-            my $new_cases = substr ($cases, 1, length ($cases) - 2);
-            $cases = $new_cases;
         }
 
         #
@@ -1244,3 +1205,4 @@ sub print_help {
     print ("    If the flag \$pp_enable_use_of_owid_mortality_data is set, this switch is not used\n");
     print ("    This flag is currently set\n");
 }
+
