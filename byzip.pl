@@ -25,8 +25,6 @@ use DateTime;
 use List::Util qw (max);
 
 use lib '.';
-# use byzip_a;
-# use byzip_b;
 use byzip_c;
 use byzip_v;
 use byzip_plot;
@@ -73,62 +71,19 @@ my $todays_date_string_for_file_names = sprintf ("%04d %02d %02d",
                 $now->month(),
                 $now->day());
 
-#
-# SET UP MORTALITY VALUES
-# =======================
-#
-my $mortality = 3.1;
-my %mortality_table;
-if ($pp_enable_use_of_owid_mortality_data) {
-    my $todays_owid_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names owid-covid-data.csv";
-    my $todays_owid_usa_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names owid-usa-covid-data.csv";
-    my $todays_mortality_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names $pp_mortality_hash_value_file_name";
-
-    #
-    # This creates "YYYY MM DD owid-covid-data.csv"
-    #
-    my $status = byzip_mt::get_mortality_records_from_server (
-        $todays_owid_data_file_name,
-        $pp_owid_url);
-    if ($status != 1) {
-        exit (1);
-    }
-
-    #
-    # This creates "YYYY MM DD owid-usa_covid-data.csv" if necessary and returns the
-    # content
-    #
-    my $us_csv_ptr = byzip_mt::get_usa_data (
-        $todays_owid_data_file_name,
-        $todays_owid_usa_data_file_name);
-
-    byzip_mt::fill_mortality_hash (\%mortality_table, $us_csv_ptr, $todays_mortality_data_file_name);
-
-    if ($pp_print_mortality_table_and_exit) {
-        my @unsorted_records;
-        while (my ($key, $val) = each %mortality_table) {
-            push (@unsorted_records, "$key $val");
-        }
-
-        my @sorted_records = sort (@unsorted_records);
-
-        foreach my $r (@sorted_records) {
-            print ("$r\n");
-        }
-
-        exit (1);
-    }
-}
 
 #
 # COMMAND LINE ARGUMENTS
 # ======================
+#
+# Set defaults
 #
 my $zip_string;
 my $duration_min = 9;
 my $duration_max = 19;
 my $untested_positive = 0;
 # my $non_white;
+my $mortality = 3.1;
 # my $white;
 my $severity = '40:40:20';
 my $plot_output_flag = 0;
@@ -136,6 +91,9 @@ my $max_cured = 0;
 my $max_cured_line_number = __LINE__;
 my $report_data_collection_messages = 0;  # default 'no'
 
+#
+# Get input arguments
+#
 my $untested_positive_switch = 'untested_positive=';
 my $untested_positive_switch_string_len = length ($untested_positive_switch);
 
@@ -617,6 +575,52 @@ print ("Have $count cases of which $untested_positive_case_count are untested po
 print ("Last serial = $last_serial, largest = $largest_serial\n");
 
 #
+# SET UP MORTALITY VALUES
+# =======================
+#
+my %mortality_table;
+if ($pp_enable_use_of_owid_mortality_data) {
+    my $todays_owid_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names owid-covid-data.csv";
+    my $todays_owid_usa_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names owid-usa-covid-data.csv";
+    my $todays_mortality_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names $pp_mortality_hash_value_file_name";
+
+    #
+    # This creates "YYYY MM DD owid-covid-data.csv"
+    #
+    my $status = byzip_mt::get_mortality_records_from_server (
+        $todays_owid_data_file_name,
+        $pp_owid_url);
+    if ($status != 1) {
+        exit (1);
+    }
+
+    #
+    # This creates "YYYY MM DD owid-usa_covid-data.csv" if necessary and returns the
+    # content
+    #
+    my $us_csv_ptr = byzip_mt::get_usa_data (
+        $todays_owid_data_file_name,
+        $todays_owid_usa_data_file_name);
+
+    byzip_mt::fill_mortality_hash (\%mortality_table, $us_csv_ptr, $todays_mortality_data_file_name);
+
+    if ($pp_print_mortality_table_and_exit) {
+        my @unsorted_records;
+        while (my ($key, $val) = each %mortality_table) {
+            push (@unsorted_records, "$key $val");
+        }
+
+        my @sorted_records = sort (@unsorted_records);
+
+        foreach my $r (@sorted_records) {
+            print ("$r\n");
+        }
+
+        exit (1);
+    }
+}
+
+#
 # DETERMINE FATAL CASES
 # =====================
 #
@@ -820,6 +824,9 @@ sub choose_state {
     if ($int_any_zip >= 10001 && $int_any_zip <= 11697) {
         return ('newyork');
     }
+    elsif ($int_any_zip >= 19101 && $int_any_zip <= 19197) {
+        return ('pennsylvania');
+    }
     elsif ($int_any_zip >= 20601 && $int_any_zip <= 21921) {
         return ('maryland');
     }
@@ -907,6 +914,9 @@ sub get_possibly_useful_records {
                 elsif ($h eq 'cases') {
                     $cases_column_offset = $j;
                 }
+                elsif ($h eq 'pos') {
+                    $cases_column_offset = $j;
+                }
                 elsif ($h eq 'covid_case_count') {
                     $cases_column_offset = $j;
                 }
@@ -914,6 +924,9 @@ sub get_possibly_useful_records {
                     $cases_column_offset = $j;
                 }
                 elsif ($h eq 'zip') {
+                    $zip_column_offset = $j;
+                }
+                elsif ($h eq 'zip_code') {
                     $zip_column_offset = $j;
                 }
                 elsif ($h eq 'zipx') {

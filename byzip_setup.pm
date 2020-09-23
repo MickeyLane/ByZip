@@ -12,6 +12,7 @@ use POSIX;
 use File::chdir;
 use File::Basename qw(fileparse);
 use File::Copy qw(move);
+use PerlIO::gzip;
 
 use lib '.';
 use byzip_cleanups;
@@ -27,11 +28,14 @@ my $fq_maryland_root_dir_for_windows = 'D:/ByZip/Maryland';
 my $fq_maryland_root_dir_for_linux = '/home/mickey/ByZip/Maryland';
 my $fq_northcarolina_root_dir_for_windows = 'D:/ByZip/NorthCarolina';
 my $fq_northcarolina_root_dir_for_linux = '/home/mickey/ByZip/NorthCarolina';
+my $fq_pennsylvania_root_dir_for_windows = 'D:/ByZip/Pennsylvania';
+my $fq_pennsylvania_root_dir_for_linux = '/home/mickey/ByZip/Pennsylvania';
 
 my $pp_first_florida_directory = '2020-04-08';
 my $pp_first_newyork_directory = '2020-03-31';
 my $pp_first_maryland_directory = '2020-04-12';
 my $pp_first_northcarolina_directory = '2020-05-01';
+my $pp_first_pennsylvania_directory = '2020-06-01';
 
 sub setup {
     my $state = shift;
@@ -95,6 +99,16 @@ sub setup {
         $first_dir = "$dir/$pp_first_northcarolina_directory";
         $first_dir_date_string = $pp_first_northcarolina_directory;
     }
+    elsif ($windows_flag && $state eq 'pennsylvania') {
+        $dir = lc $fq_pennsylvania_root_dir_for_windows;
+        $first_dir = "$dir/$pp_first_pennsylvania_directory";
+        $first_dir_date_string = $pp_first_pennsylvania_directory;
+    }
+    elsif ($windows_flag == 0 && $state eq 'pennsylvania') {
+        $dir = lc $fq_pennsylvania_root_dir_for_linux;
+        $first_dir = "$dir/$pp_first_pennsylvania_directory";
+        $first_dir_date_string = $pp_first_pennsylvania_directory;
+    }
     else {
         print ("Can't figure out base \$dir\n");
         print ("  \$windows_flag = $windows_flag\n");
@@ -152,11 +166,33 @@ sub setup {
             #
             # File found
             #
-            my @suffixlist = qw (.csv .tsv);
+            my @suffixlist = qw (.csv .tsv .gz);
             my ($name, $path, $suffix) = fileparse ($fq_fn, @suffixlist);
 
             if ($suffix eq '') {
                 next;
+            }
+            elsif ($suffix eq '.gz') {
+                if ($fn =~ /covid_cases_by_zip_(\d{4})-(\d{2})-(\d{2})/) {
+                    my $fq_new_dir = "$dir/$1-$2-$3";
+                    my $fq_new_file = "$fq_new_dir/converted.csv";
+
+                    print ("Making $fq_new_file\n");
+
+                    open my $ofh, '>:raw',  $fq_new_file or die $!;
+                    open my $ifh, '<:gzip', $fq_fn or die $!;
+                    print $ofh $_ while <$ifh>;
+                    close $ifh or die $!;
+                    close $ofh or die $!;
+
+                    byzip_cleanups::cleanup_pennsylvania_csv_files ($fq_new_file);
+                    
+                    unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
+                }
+                else {
+                    print ("Don't know how to process a .gz file\n");
+                    exit (1);
+                }
             }
             elsif ($suffix eq '.tsv') {
                 if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {

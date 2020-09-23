@@ -7,8 +7,7 @@ I had no idea how many sick people there were around me. Someone who was reporte
 I decided to write a simulator using the published cumulative positive case data that would estimate how many people were still sick, dead or cured and no longer a threat. This is that
 simulator.
 
-The Data
---------
+## The Data
 
 I managed to find comma separated value (.csv) files for each day. Each file contains a row for each zip code and columns for ‘zip code’ and ‘number of cases’ (along with a lot of information I’m not interested in).
 
@@ -24,8 +23,7 @@ Each case in the list has a number of parameters:
 
 Prior to the simulation process, a random number picker is used to set some of the parameters. The percentage of fatal cases is estimated (somewhere between 1 and 3.5 percent) and the duration of the sickness is estimated (somewhere between 9 and 19 days) in the non-fatal cases.
 
-Simulation
-----------
+## Simulation
 
 The program picks a start date (usually the beginning of the available data) and the end date (today) for the simulation. The simulation process is to touch each case in the list for each date in the simulation and, as the dates pass, one by one, the note the case status changes. Lists are kept noting the number of cured, still sick and dead for each day.
 
@@ -33,15 +31,13 @@ The simulation is run three times and the random number generator is used prior 
 
 When all is done, the saved lists are plotted.
 
-Adjusting the numbers
----------------------
+## Adjusting the numbers
 
 The program (actually a perl script) uses command line arguments to set the various simulation values. Enter the command help (“perl ByZip.pl help”) to get a display of the current command line options.
 
 Some of the options are for debugging and are defaulted ‘off’.
 
-Mortality rates
----------------
+## Mortality rates
 
-Our World in Data (OWID, https://ourworldindata.org/) publishes COVID-19 mortality rates for each day and each country. ByZip strips out the USA data and makes an array of mortality rates for the entire US. The simulator defaults to using this array (it changes day-by-day) but it can use a fixed rate entered from the keyboard. The day-by-day changes are pretty dramatic over time so it's suggested that they be used instrad of a fixed value.
+[Our World in Data (OWID)] (https://ourworldindata.org/) publishes COVID-19 mortality rates for each day and each country. ByZip strips out the USA data and makes an array of mortality rates for the entire US. The simulator defaults to using this array (it changes day-by-day) but it can use a fixed rate entered from the keyboard. The day-by-day changes are pretty dramatic over time so it's suggested that they be used instrad of a fixed value.
 
