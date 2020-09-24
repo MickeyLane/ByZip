@@ -63,7 +63,6 @@ my $pp_output_file_name = 'byzip-output.csv';
 my $pp_enable_use_of_owid_mortality_data = 1;
 my $pp_owid_url = 'https://covid.ourworldindata.org/data/owid-covid-data.csv';
 my $pp_mortality_hash_value_file_name = 'mort_hash.dat';
-my $pp_print_mortality_table_and_exit = 0; # for debug or experimenting
 
 my $now = DateTime->now;
 my $todays_date_string_for_file_names = sprintf ("%04d %02d %02d",
@@ -90,6 +89,7 @@ my $plot_output_flag = 0;
 my $max_cured = 0;
 my $max_cured_line_number = __LINE__;
 my $report_data_collection_messages = 0;  # default 'no'
+my $print_mortality_table_and_exit = 0; # for debug or experimenting
 
 #
 # Get input arguments
@@ -153,6 +153,9 @@ foreach my $switch (@ARGV) {
     elsif ($lc_switch eq 'help' || $lc_switch eq 'h') {
         print_help ($duration_min, $duration_max);
         exit (1);
+    }
+    elsif ($lc_switch eq 'mortality_table') {
+        $print_mortality_table_and_exit = 1;
     }
     else {
         print ("Don't know what to do with $switch\n");
@@ -604,7 +607,7 @@ if ($pp_enable_use_of_owid_mortality_data) {
 
     byzip_mt::fill_mortality_hash (\%mortality_table, $us_csv_ptr, $todays_mortality_data_file_name);
 
-    if ($pp_print_mortality_table_and_exit) {
+    if ($print_mortality_table_and_exit) {
         my @unsorted_records;
         while (my ($key, $val) = each %mortality_table) {
             push (@unsorted_records, "$key $val");
@@ -1217,5 +1220,8 @@ sub print_help {
     print ("\n  mortality=n.n\n");
     print ("    If the flag \$pp_enable_use_of_owid_mortality_data is set, this switch is not used\n");
     print ("    This flag is currently set\n");
+
+    print ("\n  mortality_table\n");
+    print ("    No arguments. Print the mortality table and exit\n");
 }
 

@@ -41,3 +41,10 @@ Some of the options are for debugging and are defaulted ‘off’.
 
 [Our World in Data (OWID)] (https://ourworldindata.org/) publishes COVID-19 mortality rates for each day and each country. ByZip strips out the USA data and makes an array of mortality rates for the entire US. The simulator defaults to using this array (it changes day-by-day) but it can use a fixed rate entered from the keyboard. The day-by-day changes are pretty dramatic over time so it's suggested that they be used instrad of a fixed value.
 
+# Credits
+
+## Genreal data
+
+[United States Zip Codes.org] (https://www.unitedstateszipcodes.org/zip-code-database/) makes
+available a complete database of zip codes by state. Provided free to private, non-profit use like ByZip.
+
