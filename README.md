@@ -7,7 +7,15 @@ I had no idea how many sick people there were around me. Someone who was reporte
 I decided to write a simulator using the published cumulative positive case data that would estimate how many people were still sick, dead or cured and no longer a threat. This is that
 simulator.
 
-## The Data
+## The data
+
+This project contains data for the following
+
+    Florida
+    New York (some zips, not all)
+    Pennsylvania
+    North Carolina
+    Maryland
 
 I managed to find comma separated value (.csv) files for each day. Each file contains a row for each zip code and columns for ‘zip code’ and ‘number of cases’ (along with a lot of information I’m not interested in).
 
