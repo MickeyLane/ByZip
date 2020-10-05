@@ -100,7 +100,7 @@ sub process {
                 $days = int ($duration / 86400);
             }
 
-            if ($serial == $last_serial || $days > 10) {
+            if ($serial == $last_serial || $days > 30) {
                 $done_with_this_day = 1;
             }
             
