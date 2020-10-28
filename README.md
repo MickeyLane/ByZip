@@ -14,7 +14,7 @@ This project contains data for the following
     Florida
     New York (some zips, not all)
     Pennsylvania
-    North Carolina
+    North Carolina (currently broken due to data format change early October)
     Maryland
 
 I managed to find comma separated value (.csv) files for each day. Each file contains a row for each zip code and columns for ‘zip code’ and ‘number of cases’ (along with a lot of information I’m not interested in).
