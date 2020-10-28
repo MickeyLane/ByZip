@@ -35,7 +35,7 @@ my $pp_first_florida_directory = '2020-04-08';
 my $pp_first_newyork_directory = '2020-03-31';
 my $pp_first_maryland_directory = '2020-04-12';
 my $pp_first_northcarolina_directory = '2020-05-01';
-my $pp_first_pennsylvania_directory = '2020-06-01';
+my $pp_first_pennsylvania_directory = '2020-06-22';
 
 sub setup {
     my $state = shift;
