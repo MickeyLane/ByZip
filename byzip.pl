@@ -291,10 +291,12 @@ foreach my $dir (@date_dirs) {
     my @possibly_useful_records = @$ptr;
     my $count = @possibly_useful_records;
     if ($count == 0) {
-        print ("Fatal error. No possibly useful records found\n");
+        print ("No possibly useful records found\n");
+        print ("  \$found_csv_file = $found_csv_file\n");
         print ("  \$cases_column_offset = $cases_column_offset\n");
         print ("  \$zip_column_offset = $zip_column_offset\n");
-        exit (1);
+        # exit (1);
+        next;
     }
     elsif ($report_data_collection_messages) {
         print ("  Found $count possibly useful records\n");

@@ -16,6 +16,7 @@ use PerlIO::gzip;
 
 use lib '.';
 use byzip_cleanups;
+use byzip_setup_maryland;
 
 #
 # Edit the following as needed. If you are using Linux, ignore '_windows' and vice versa
@@ -138,6 +139,11 @@ sub setup {
         while ($not_done) {
             $not_done = make_new_dirs ($dir);
         }
+    }
+
+    if ($state eq 'maryland') {
+        my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir);
+        return (1, $dir, $date_dirs_ptr);
     }
 
     #
