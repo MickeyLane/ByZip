@@ -57,6 +57,11 @@ Some of the options are for debugging and are defaulted ‘off’.
 
 ## Genreal data
 
-[United States Zip Codes.org] (https://www.unitedstateszipcodes.org/zip-code-database/) makes
+[United States Zip Codes] (https://www.unitedstateszipcodes.org/zip-code-database/) makes
 available a complete database of zip codes by state. Provided free to private, non-profit use like ByZip.
+This isn't actually being used yet. The intent is to equate any input zip code to a state but since there are
+so few states being reported at the moment, the lookup is just hard coded.
 
+[Our World in Data] (https://covid.ourworldindata.org/data/owid-covid-data.csv) provides a daily database
+that includes the death rate around the globe. B yZip strips out the US portion of it and computes a daily
+mortality rate for the entire country.

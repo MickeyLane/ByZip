@@ -60,7 +60,7 @@ my $pp_output_file_name = 'byzip-output.csv';
 #
 # OWID = Our World in Data at https://ourworldindata.org/coronavirus
 #
-my $pp_enable_use_of_owid_mortality_data = 0;
+my $pp_enable_use_of_owid_mortality_data = 1;
 my $pp_owid_url = 'https://covid.ourworldindata.org/data/owid-covid-data.csv';
 my $pp_mortality_hash_value_file_name = 'mort_hash.dat';
 

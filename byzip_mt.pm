@@ -90,29 +90,24 @@ sub fill_mortality_hash {
     foreach my $r (@$csv_ptr) {
         my @list = split (',', $r);
 
-        my $deaths = int ($list[$total_death]);
-        my $cases = int ($list[$total_case]);
         my $date_original_str = $list[$date_col];
-
         #
         # The date string format in the csv file os OK
         #
         # my $data_my_str = convert_date_format ($date_original_str);
         my $data_my_str = $date_original_str;
 
-        if ($cases == 0 || $deaths == 0) {
+        if ($list[$total_death] eq '' || $list[$total_case]) {
             $hash_ptr->{$data_my_str} = 0;
-        }
-        else {
-            my $fp_percent = ($deaths/ $cases) * 100;
-            $hash_ptr->{$data_my_str} = $fp_percent;
+            next;
         }
 
+        my $deaths = int ($list[$total_death]);
+        my $cases = int ($list[$total_case]);
+
+        my $fp_percent = ($deaths/ $cases) * 100;
+        $hash_ptr->{$data_my_str} = $fp_percent;
     }
-    # if (!(-e $todays_mortality_data_file_name)) {
-    # }
-
-
 }
 
 sub convert_date_format {
