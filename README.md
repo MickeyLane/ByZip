@@ -31,10 +31,6 @@ Each case in the list has a number of parameters:
 
 Prior to the simulation process, a random number picker is used to set some of the parameters. The percentage of fatal cases is estimated (somewhere between 1 and 3.5 percent) and the duration of the sickness is estimated (somewhere between 9 and 19 days) in the non-fatal cases.
 
-### Data error issues
-
-It's been noted by several sources that generating new case data from daily reported totals is subject to error because the report date probably doesn't match the real case date or the reporting pipeline may not function on a daily basis. Making the assumption that the errors are somewhat consistant, it should not pose a problem over the time spans displayed. Anomolies will show up in the graphs if there are problems.
-
 ## Simulation
 
 The program picks a start date (usually the beginning of the available data) and the end date (today) for the simulation. The simulation process is to touch each case in the list for each date in the simulation and, as the dates pass, one by one, the note the case status changes. Lists are kept noting the number of cured, still sick and dead for each day.
@@ -52,6 +48,16 @@ Some of the options are for debugging and are defaulted ‘off’.
 ## Mortality rates
 
 [Our World in Data (OWID)] (https://ourworldindata.org/) publishes COVID-19 mortality rates for each day and each country. ByZip strips out the USA data and makes an array of mortality rates for the entire US. The simulator defaults to using this array (it changes day-by-day) but it can use a fixed rate entered from the keyboard. The day-by-day changes are pretty dramatic over time so it's suggested that they be used instrad of a fixed value.
+
+# Error issues
+
+## Data
+
+It's been noted by several sources that generating new case data from daily reported totals is subject to error because the report date probably doesn't match the real case date or the reporting pipeline may not function on a daily basis. Making the assumption that the errors are somewhat consistant, it should not pose a problem over the time spans displayed. Anomolies will show up in the graphs if there are problems.
+
+## Simulations
+
+If the data for a particular zip starts out high and remains flat for some time, the graph display will show an almost straight line decline to some lower value. This is because the simulator has no way of knowing how many of the cases on the 1st day of reporting are actually still sick. Still working on resolving this issue.
 
 # Credits
 
