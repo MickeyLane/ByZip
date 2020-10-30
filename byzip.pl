@@ -164,6 +164,14 @@ foreach my $switch (@ARGV) {
 }
 
 my $state = choose_state ($zip_string);
+my $state_debug_mode = 0;
+
+# if ($state eq 'pennsylvania') {
+#     $pp_report_adding_case = 1;
+#     $pp_dont_do_sims = 1;
+#     $report_data_collection_messages = 1;
+#     $state_debug_mode = 1;
+# }
 
 #
 # REPORT SIMULATION PARAMETERS
@@ -172,6 +180,9 @@ my $state = choose_state ($zip_string);
 print ("Simulation values:\n");
 print ("  Zip = $zip_string\n");
 print ("  State = $state\n");
+if ($state_debug_mode) {
+    print ("  DEBUG MODE!\n");
+}
 if ($pp_enable_use_of_owid_mortality_data) {
     print ("  Mortality = using OWID derived table of daily percentage rates\n");
 }

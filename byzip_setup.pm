@@ -12,11 +12,11 @@ use POSIX;
 use File::chdir;
 use File::Basename qw(fileparse);
 use File::Copy qw(move);
-use PerlIO::gzip;
 
 use lib '.';
 use byzip_cleanups;
 use byzip_setup_maryland;
+use byzip_setup_pennsylvania;
 
 #
 # Edit the following as needed. If you are using Linux, ignore '_windows' and vice versa
@@ -36,7 +36,7 @@ my $pp_first_florida_directory = '2020-04-08';
 my $pp_first_newyork_directory = '2020-03-31';
 my $pp_first_maryland_directory = '2020-04-12';
 my $pp_first_northcarolina_directory = '2020-05-01';
-my $pp_first_pennsylvania_directory = '2020-06-22';
+my $pp_first_pennsylvania_directory = '2020-06-17';
 
 sub setup {
     my $state = shift;
@@ -57,9 +57,6 @@ sub setup {
         $windows_flag = 1;
     }
 
-    #
-    # Go to root dir
-    #
     if ($windows_flag && $state eq 'newyork') {
         $dir = lc $fq_newyork_root_dir_for_windows;
         $first_dir = "$dir/$pp_first_newyork_directory";
@@ -117,6 +114,9 @@ sub setup {
         exit (1);
     }
 
+    #
+    # Go to root dir
+    #
     $CWD = $dir;
     $cwd = Cwd::cwd();
 
@@ -143,6 +143,11 @@ sub setup {
 
     if ($state eq 'maryland') {
         my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir);
+        return (1, $dir, $date_dirs_ptr);
+    }
+
+    if ($state eq 'pennsylvania') {
+        my ($date_dirs_ptr) = byzip_setup_pennsylvania::setup_state ($dir);
         return (1, $dir, $date_dirs_ptr);
     }
 
@@ -179,60 +184,62 @@ sub setup {
                 next;
             }
             elsif ($suffix eq '.gz') {
-                if ($fn =~ /covid_cases_by_zip_(\d{4})-(\d{2})-(\d{2})/) {
-                    my $fq_new_dir = "$dir/$1-$2-$3";
-                    my $fq_new_file = "$fq_new_dir/converted.csv";
+                die;
+                # if ($fn =~ /covid_cases_by_zip_(\d{4})-(\d{2})-(\d{2})/) {
+                #     my $fq_new_dir = "$dir/$1-$2-$3";
+                #     my $fq_new_file = "$fq_new_dir/converted.csv";
 
-                    print ("Making $fq_new_file\n");
+                #     print ("Making $fq_new_file\n");
 
-                    open my $ofh, '>:raw',  $fq_new_file or die $!;
-                    open my $ifh, '<:gzip', $fq_fn or die $!;
-                    print $ofh $_ while <$ifh>;
-                    close $ifh or die $!;
-                    close $ofh or die $!;
+                #     open my $ofh, '>:raw',  $fq_new_file or die $!;
+                #     open my $ifh, '<:gzip', $fq_fn or die $!;
+                #     print $ofh $_ while <$ifh>;
+                #     close $ifh or die $!;
+                #     close $ofh or die $!;
 
-                    byzip_cleanups::cleanup_pennsylvania_csv_files ($fq_new_file);
+                #     byzip_cleanups::cleanup_pennsylvania_csv_files ($fq_new_file);
                     
-                    unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
-                }
-                else {
-                    print ("Don't know how to process a .gz file\n");
-                    exit (1);
-                }
+                #     unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
+                # }
+                # else {
+                #     print ("Don't know how to process a .gz file\n");
+                #     exit (1);
+                # }
             }
             elsif ($suffix eq '.tsv') {
-                if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {
-                    my $new_file = "$dir/$1-$2-$3/converted.csv";
+                die;
+                # if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {
+                #     my $new_file = "$dir/$1-$2-$3/converted.csv";
 
-                    my @csv_records;
+                #     my @csv_records;
 
-                    open (FILE, "<", $fq_fn) or die "Can't open $fq_fn: $!";
-                    while (my $record = <FILE>) {
-                        chomp ($record);
+                #     open (FILE, "<", $fq_fn) or die "Can't open $fq_fn: $!";
+                #     while (my $record = <FILE>) {
+                #         chomp ($record);
 
-                        if ($record =~ /(\d{5})\s+(\d+) Cases/) {
-                            push (@csv_records, "$1,$2");
-                        }
-                        else {
-                            print ("in $fq_fn, unexpected .tsv record is $record\n");
-                            exit (1);
-                        }
-                    }
-                    close (FILE);
+                #         if ($record =~ /(\d{5})\s+(\d+) Cases/) {
+                #             push (@csv_records, "$1,$2");
+                #         }
+                #         else {
+                #             print ("in $fq_fn, unexpected .tsv record is $record\n");
+                #             exit (1);
+                #         }
+                #     }
+                #     close (FILE);
 
-                    open (FILE, ">", $new_file) or die "Can't open $new_file: $!";
-                    print (FILE "zip,cases\n");
-                    foreach my $r (@csv_records) {
-                        print (FILE "$r\n");
-                    }
-                    close (FILE);
+                #     open (FILE, ">", $new_file) or die "Can't open $new_file: $!";
+                #     print (FILE "zip,cases\n");
+                #     foreach my $r (@csv_records) {
+                #         print (FILE "$r\n");
+                #     }
+                #     close (FILE);
 
-                    unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
-                }
-                else {
-                    print ("Don't know what to do with $fq_fn\n");
-                    exit (1);
-                }
+                #     unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
+                # }
+                # else {
+                #     print ("Don't know what to do with $fq_fn\n");
+                #     exit (1);
+                # }
 
             }
             elsif ($suffix eq '.csv') {
