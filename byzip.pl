@@ -37,9 +37,6 @@ use byzip_cleanups;
 package main;
 
 #
-# SET PROGRAM PARAMETERS
-# ======================
-#
 # Any variable that begins with 'fq_' is supposed to contain a fully qualified file name
 # Any variable that begins with 'pp_' is a program parameter and is usually a flag to enable
 #   or disable some feature
@@ -47,29 +44,25 @@ package main;
 #
 
 #
+# SET UP LOCATION & FILE NAME HASH
+# ================================
 #
 #
-my $pp_covid_data_root_dir = 'D:/ByZip';
+my %lookup_hash;
+$lookup_hash{'root'} = 'D:/ByZip';
+$lookup_hash{'byzip_output_file'} = 'byzip-output.csv';
+my $now = DateTime->now;
+$lookup_hash{'todays_date_string'} = sprintf ("%04d %02d %02d", $now->year(), $now->month(), $now->day());
+
+#
+# SET PROGRAM PARAMETERS
+# ======================
+#
 my $pp_create_missing_directories = 1;
 my $pp_report_sim_messages = 0;
 my $pp_report_adding_case = 0;
 my $pp_dont_do_sims = 0;
 my $pp_report_header_changes = 0;
-my $pp_output_file_name = 'byzip-output.csv';
-
-#
-# OWID = Our World in Data at https://ourworldindata.org/coronavirus
-#
-my $pp_enable_use_of_owid_mortality_data = 1;
-my $pp_owid_url = 'https://covid.ourworldindata.org/data/owid-covid-data.csv';
-my $pp_mortality_hash_value_file_name = 'mort_hash.dat';
-
-my $now = DateTime->now;
-my $todays_date_string_for_file_names = sprintf ("%04d %02d %02d",
-                $now->year(),
-                $now->month(),
-                $now->day());
-
 
 #
 # COMMAND LINE ARGUMENTS
@@ -81,15 +74,13 @@ my $zip_string;
 my $duration_min = 9;
 my $duration_max = 19;
 my $untested_positive = 0;
-# my $non_white;
-my $mortality = 3.1;
-# my $white;
+my $mortality = 0;
 my $severity = '40:40:20';
 my $plot_output_flag = 0;
 my $max_cured = 0;
 my $max_cured_line_number = __LINE__;
 my $report_data_collection_messages = 0;  # default 'no'
-my $print_mortality_table_and_exit = 0; # for debug or experimenting
+my $development_machine = 0;
 
 #
 # Get input arguments
@@ -102,6 +93,9 @@ my $max_display_switch_string_len = length ($max_display_switch);
 
 my $report_collection_switch = 'report_collection=';
 my $report_collection_switch_string_len = length ($report_collection_switch);
+
+my $development_machine_switch = 'development_machine=';
+my $development_machine_switch_string_len = length ($development_machine_switch);
 
 foreach my $switch (@ARGV) {
     my $lc_switch = lc $switch;
@@ -146,16 +140,18 @@ foreach my $switch (@ARGV) {
         my $val = substr ($switch, $report_collection_switch_string_len);
         $report_data_collection_messages = int ($val);
     }
-    # elsif (index ($lc_switch, 'non_white=') != -1) {
-    #     my $val = substr ($switch, 10);
-    #     $non_white = int ($val);
-    # }
+    elsif (index ($lc_switch, $development_machine_switch) != -1) {
+        #
+        # The development_machine switch is used to indicate that the script
+        # is being run on a machine that has the git repositories for the data
+        # sources and the Windows batch job to initialize stuff each new day
+        #
+        my $val = substr ($switch, $development_machine_switch_string_len);
+        $development_machine = int ($val);
+    }
     elsif ($lc_switch eq 'help' || $lc_switch eq 'h') {
         print_help ($duration_min, $duration_max);
         exit (1);
-    }
-    elsif ($lc_switch eq 'mortality_table') {
-        $print_mortality_table_and_exit = 1;
     }
     else {
         print ("Don't know what to do with $switch\n");
@@ -163,15 +159,8 @@ foreach my $switch (@ARGV) {
     }
 }
 
-my $state = choose_state ($zip_string);
-my $state_debug_mode = 0;
-
-# if ($state eq 'pennsylvania') {
-#     $pp_report_adding_case = 1;
-#     $pp_dont_do_sims = 1;
-#     $report_data_collection_messages = 1;
-#     $state_debug_mode = 1;
-# }
+my ($state, $lookup_hash_ptr) = choose_state ($zip_string, \%lookup_hash);
+%lookup_hash = %$lookup_hash_ptr;
 
 #
 # REPORT SIMULATION PARAMETERS
@@ -180,10 +169,7 @@ my $state_debug_mode = 0;
 print ("Simulation values:\n");
 print ("  Zip = $zip_string\n");
 print ("  State = $state\n");
-if ($state_debug_mode) {
-    print ("  DEBUG MODE!\n");
-}
-if ($pp_enable_use_of_owid_mortality_data) {
+if ($mortality == 0) {
     print ("  Mortality = using OWID derived table of daily percentage rates\n");
 }
 else {
@@ -192,15 +178,10 @@ else {
 print ("  Duration_min = $duration_min days\n");
 print ("  Duration_max = $duration_max days\n");
 print ("  Untested = add $untested_positive untested positive cases for every one detected\n");
-# print ("  White = $white percent\n");
-# print ("  Non_white = $non_white percent\n");
 # print ("  Severity = $severity disease severity groups: no symptoms, moderate and severe\n");
 # print ("      (Values are percents, total must be 100)\n");
 print ("  Plot output = $plot_output_flag (0 = no, 1 = yes)\n");
 print ("  Clip cured plot line at $max_cured. (Use $max_display_switch)\n");
-
-my @csv_files;
-# my $non_white_x_10 = int ($non_white * 10);
 
 #
 # SETUP
@@ -208,11 +189,15 @@ my @csv_files;
 #
 # Select state, pick directories, inventory directories, make missing directories
 #
-my ($status, $dir, $date_dirs_list_ptr) = byzip_setup::setup (
-    $state, $pp_create_missing_directories, $pp_output_file_name);
+my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup (
+    $state,
+    $pp_create_missing_directories,
+    $development_machine,
+    \%lookup_hash);
 if ($status == 0) {
     exit (1);
 }
+%lookup_hash = %$hash_ptr;
 
 print ("Current working directory is $dir\n");
 
@@ -267,9 +252,6 @@ foreach my $dir (@date_dirs) {
         $path =~ s/\/\z//;
 
         if ($suffix eq '.csv') {
-            # push (@csv_files, $fq_filename);
-            # print ("$fq_filename\n");
-
             if (defined ($found_csv_file)) {
                 print ("  There are multiple .csv files in $dir\n");
                 exit (1);
@@ -594,47 +576,14 @@ print ("Last serial = $last_serial, largest = $largest_serial\n");
 # SET UP MORTALITY VALUES
 # =======================
 #
-my %mortality_table;
-if ($pp_enable_use_of_owid_mortality_data) {
-    my $todays_owid_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names owid-covid-data.csv";
-    my $todays_owid_usa_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names owid-usa-covid-data.csv";
-    my $todays_mortality_data_file_name = "$pp_covid_data_root_dir/$todays_date_string_for_file_names $pp_mortality_hash_value_file_name";
-
-    #
-    # This creates "YYYY MM DD owid-covid-data.csv"
-    #
-    my $status = byzip_mt::get_mortality_records_from_server (
-        $todays_owid_data_file_name,
-        $pp_owid_url);
-    if ($status != 1) {
-        exit (1);
-    }
-
-    #
-    # This creates "YYYY MM DD owid-usa_covid-data.csv" if necessary and returns the
-    # content
-    #
-    my $us_csv_ptr = byzip_mt::get_usa_data (
-        $todays_owid_data_file_name,
-        $todays_owid_usa_data_file_name);
-
-    byzip_mt::fill_mortality_hash (\%mortality_table, $us_csv_ptr, $todays_mortality_data_file_name);
-
-    if ($print_mortality_table_and_exit) {
-        my @unsorted_records;
-        while (my ($key, $val) = each %mortality_table) {
-            push (@unsorted_records, "$key $val");
-        }
-
-        my @sorted_records = sort (@unsorted_records);
-
-        foreach my $r (@sorted_records) {
-            print ("$r\n");
-        }
-
-        exit (1);
-    }
+# This creates a hash table with mortality rates for each date being simulated
+#
+my ($mt_status, $mt_hash_ptr, $table_ptr) = byzip_mt::get_mortality_records_from_server (\%lookup_hash, \@date_dirs);
+if ($mt_status != 1) {
+    exit (1);
 }
+%lookup_hash = %$mt_hash_ptr;
+my %mortality_table = %$table_ptr;
 
 #
 # DETERMINE FATAL CASES
@@ -647,7 +596,6 @@ foreach my $case_hash_ptr (@cases_list) {
     # Determine if this patient is going to die
     #
     if (predict_case_is_fatal (
-            $pp_enable_use_of_owid_mortality_data,
             \%mortality_table,
             $mortality,
             $begin_dt)) {
@@ -758,8 +706,9 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
     }
 }
 
-my $output_file = "$dir/$pp_output_file_name";
-open (FILE, ">", $output_file) or die "Can't open $output_file: $!";
+my $output_file_name = $lookup_hash_ptr->{'byzip_output_file'};
+my $fully_qualified_output_file = "$dir/$output_file_name";
+open (FILE, ">", $fully_qualified_output_file) or die "Can't open $fully_qualified_output_file: $!";
 print (FILE "$output_header\n");
 
 foreach my $r (@output_csv) {
@@ -820,13 +769,18 @@ graveyard:
 
 sub choose_state {
     my $zip_string = shift;
+    my $lookup_hash_ptr = shift;
 
     if (!(defined ($zip_string))) {
         print ("No zip code specified\n");
         exit (1);
     }
+    else {
+        print ("Setting up for zip code(s) $zip_string\n");
+    }
 
     my $any_zip;
+    my %lookup_hash = %$lookup_hash_ptr;
 
     my $i = index ($zip_string, ',');
     if ($i != -1) {
@@ -838,20 +792,22 @@ sub choose_state {
 
     my $int_any_zip = int ($any_zip);
     if ($int_any_zip >= 10001 && $int_any_zip <= 11697) {
-        return ('newyork');
+        return ('newyork', \%lookup_hash);
     }
     elsif ($int_any_zip >= 19101 && $int_any_zip <= 19197) {
-        return ('pennsylvania');
+        return ('pennsylvania', \%lookup_hash);
     }
     elsif ($int_any_zip >= 20601 && $int_any_zip <= 21921) {
-        return ('maryland');
+        return ('maryland', \%lookup_hash);
     }
     elsif ($int_any_zip >= 27006 && $int_any_zip <= 28608) {
-        return ('northcarolina');
+        return ('northcarolina', \%lookup_hash);
     }
     else {
-        return ('florida');
+        return ('florida', \%lookup_hash);
     }
+
+    die;
 }
 
 #
@@ -1036,14 +992,13 @@ sub get_possibly_useful_records {
 # Return yes (1) or no (0)
 #
 sub predict_case_is_fatal {
-    my $enable_use_of_owid_mortality_data = shift;
     my $mortality_table_ptr = shift;
     my $fixed_mortality = shift;
     my $local_begin_dt = shift;
 
     my $mortality;
 
-    if ($enable_use_of_owid_mortality_data) {
+    if (1) {
         my $key = main::make_printable_date_string ($local_begin_dt);
         my $fp_val = $mortality_table_ptr->{$key};
         if (!(defined ($fp_val))) {
@@ -1231,10 +1186,6 @@ sub print_help {
     print ("    is used to select a value within the range. Current defaults are $min and $max days.\n");
 
     print ("\n  mortality=n.n\n");
-    print ("    If the flag \$pp_enable_use_of_owid_mortality_data is set, this switch is not used\n");
-    print ("    This flag is currently set\n");
-
-    print ("\n  mortality_table\n");
-    print ("    No arguments. Print the mortality table and exit\n");
+    print ("    TBD..\n");
 }
 

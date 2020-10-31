@@ -41,11 +41,14 @@ my $pp_first_pennsylvania_directory = '2020-06-17';
 sub setup {
     my $state = shift;
     my $create_missing_directories_flag = shift;
-    my $output_file_name = shift;
+    my $development_machine_flag = shift;
+    my $lookup_hash_ptr = shift;
 
     my $dir;
     my $first_dir;
     my $first_dir_date_string;
+    my $output_file_name = $lookup_hash_ptr->{'byzip_output_file'};
+    my %lookup_hash = %$lookup_hash_ptr;
 
     #
     # Get current directory and determine platform
@@ -141,14 +144,16 @@ sub setup {
         }
     }
 
-    if ($state eq 'maryland') {
-        my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir);
-        return (1, $dir, $date_dirs_ptr);
-    }
+    if ($development_machine_flag) {
+        if ($state eq 'maryland') {
+            my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir);
+            return (1, $dir, $date_dirs_ptr);
+        }
 
-    if ($state eq 'pennsylvania') {
-        my ($date_dirs_ptr) = byzip_setup_pennsylvania::setup_state ($dir);
-        return (1, $dir, $date_dirs_ptr);
+        if ($state eq 'pennsylvania') {
+            my ($date_dirs_ptr) = byzip_setup_pennsylvania::setup_state ($dir);
+            return (1, $dir, $date_dirs_ptr);
+        }
     }
 
     #
@@ -259,10 +264,13 @@ sub setup {
                     exit (1);
                 }
             }
+            else {
+                print ("Don't know what to do with $fq_fn\n");
+            }
         }
     }
 
-    return (1, $dir, \@date_dirs);
+    return (1, $dir, \@date_dirs, \%lookup_hash);
 }
 
 ###################################################################################
