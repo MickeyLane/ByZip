@@ -17,6 +17,7 @@ use lib '.';
 use byzip_cleanups;
 use byzip_setup_maryland;
 use byzip_setup_pennsylvania;
+use byzip_setup_northcarolina;
 
 #
 # Edit the following as needed. If you are using Linux, ignore '_windows' and vice versa
@@ -40,15 +41,15 @@ my $pp_first_pennsylvania_directory = '2020-06-17';
 
 sub setup {
     my $state = shift;
-    my $create_missing_directories_flag = shift;
     my $development_machine_flag = shift;
     my $lookup_hash_ptr = shift;
+
+    my %lookup_hash = %$lookup_hash_ptr;
 
     my $dir;
     my $first_dir;
     my $first_dir_date_string;
-    my $output_file_name = $lookup_hash_ptr->{'byzip_output_file'};
-    my %lookup_hash = %$lookup_hash_ptr;
+    my $output_file_name = $lookup_hash{'byzip_output_file'};
 
     #
     # Get current directory and determine platform
@@ -134,26 +135,27 @@ sub setup {
         exit (1);
     }
 
-    if ($create_missing_directories_flag) {
-        #
-        # Make missing date directories
-        #
-        my $not_done = 1;
-        while ($not_done) {
-            $not_done = make_new_dirs ($dir);
-        }
+    #
+    # Make missing date directories
+    #
+    my $not_done = 1;
+    while ($not_done) {
+        $not_done = make_new_dirs ($dir);
     }
 
-    if ($development_machine_flag) {
-        if ($state eq 'maryland') {
-            my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir);
-            return (1, $dir, $date_dirs_ptr);
-        }
+    if ($state eq 'maryland' && exists ($lookup_hash{'maryland_source_repository'})) {
+        my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir, \%lookup_hash);
+        return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+    }
 
-        if ($state eq 'pennsylvania') {
-            my ($date_dirs_ptr) = byzip_setup_pennsylvania::setup_state ($dir);
-            return (1, $dir, $date_dirs_ptr);
-        }
+    if ($state eq 'pennsylvania' && exists ($lookup_hash{'pensylvania_source_repository'})) {
+        my ($date_dirs_ptr) = byzip_setup_pennsylvania::setup_state ($dir, \%lookup_hash);
+        return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+    }
+
+    if ($state eq 'northcarolina' && exists ($lookup_hash{'northcarolina_source_repository'})) {
+        my ($date_dirs_ptr) = byzip_setup_northcarolina::setup_state ($dir, \%lookup_hash);
+        # return (1, $dir, $date_dirs_ptr, \%lookup_hash);
     }
 
     #
@@ -190,62 +192,9 @@ sub setup {
             }
             elsif ($suffix eq '.gz') {
                 die;
-                # if ($fn =~ /covid_cases_by_zip_(\d{4})-(\d{2})-(\d{2})/) {
-                #     my $fq_new_dir = "$dir/$1-$2-$3";
-                #     my $fq_new_file = "$fq_new_dir/converted.csv";
-
-                #     print ("Making $fq_new_file\n");
-
-                #     open my $ofh, '>:raw',  $fq_new_file or die $!;
-                #     open my $ifh, '<:gzip', $fq_fn or die $!;
-                #     print $ofh $_ while <$ifh>;
-                #     close $ifh or die $!;
-                #     close $ofh or die $!;
-
-                #     byzip_cleanups::cleanup_pennsylvania_csv_files ($fq_new_file);
-                    
-                #     unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
-                # }
-                # else {
-                #     print ("Don't know how to process a .gz file\n");
-                #     exit (1);
-                # }
             }
             elsif ($suffix eq '.tsv') {
                 die;
-                # if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {
-                #     my $new_file = "$dir/$1-$2-$3/converted.csv";
-
-                #     my @csv_records;
-
-                #     open (FILE, "<", $fq_fn) or die "Can't open $fq_fn: $!";
-                #     while (my $record = <FILE>) {
-                #         chomp ($record);
-
-                #         if ($record =~ /(\d{5})\s+(\d+) Cases/) {
-                #             push (@csv_records, "$1,$2");
-                #         }
-                #         else {
-                #             print ("in $fq_fn, unexpected .tsv record is $record\n");
-                #             exit (1);
-                #         }
-                #     }
-                #     close (FILE);
-
-                #     open (FILE, ">", $new_file) or die "Can't open $new_file: $!";
-                #     print (FILE "zip,cases\n");
-                #     foreach my $r (@csv_records) {
-                #         print (FILE "$r\n");
-                #     }
-                #     close (FILE);
-
-                #     unlink ($fq_fn) or die "Can't delete $fq_fn: $!";
-                # }
-                # else {
-                #     print ("Don't know what to do with $fq_fn\n");
-                #     exit (1);
-                # }
-
             }
             elsif ($suffix eq '.csv') {
                 if ("$name.csv" eq $output_file_name) {
