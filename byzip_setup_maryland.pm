@@ -15,12 +15,13 @@ use File::Copy qw(move);
 use PerlIO::gzip;
 
 use lib '.';
-use byzip_cleanups;
 
 sub setup_state {
     my $dir = shift;
+    my $lookup_hash_ptr = shift;
 
     my @date_dirs;
+    my $repository = $lookup_hash_ptr->{'maryland_source_repository'};
 
     opendir (DIR, $dir) or die "Can't open $dir: $!";
     while (my $fn = readdir (DIR)) {
@@ -36,7 +37,7 @@ sub setup_state {
                 # ...\Maryland\YYYY-MM-DD found
                 #
                 my $destination_file = "$dir/$fn/converted.csv";
-                my $source_file = "D:/Covid/Maryland/covid19_MD/data/$1-$2-$3.tsv";
+                my $source_file = "$repository/data/$1-$2-$3.tsv";
 
                 if (!(-e $destination_file)) {
                     #

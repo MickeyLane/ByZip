@@ -95,7 +95,7 @@ sub zip_table {
             print ($ofh "$record\n");
         }
         else {
-            $record = byzip_cleanups::remove_commas_from_double_quoted_column_values ($record);
+            $record = main::remove_commas_from_double_quoted_column_values ($record);
 
             my @fields = split (',', $record);
 

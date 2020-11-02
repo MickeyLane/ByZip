@@ -14,7 +14,6 @@ use File::Basename qw(fileparse);
 use File::Copy qw(move);
 
 use lib '.';
-use byzip_cleanups;
 use byzip_setup_maryland;
 use byzip_setup_pennsylvania;
 use byzip_setup_northcarolina;
@@ -41,10 +40,10 @@ my $pp_first_pennsylvania_directory = '2020-06-17';
 
 sub setup {
     my $state = shift;
-    my $development_machine_flag = shift;
     my $lookup_hash_ptr = shift;
-
     my %lookup_hash = %$lookup_hash_ptr;
+
+    print ("Setup...\n");
 
     my $dir;
     my $first_dir;
@@ -143,6 +142,10 @@ sub setup {
         $not_done = make_new_dirs ($dir);
     }
 
+    #
+    # Do setups for various states if this is a development machine with the
+    # necessary repositories, etc
+    #
     if ($state eq 'maryland' && exists ($lookup_hash{'maryland_source_repository'})) {
         my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir, \%lookup_hash);
         return (1, $dir, $date_dirs_ptr, \%lookup_hash);
@@ -153,9 +156,9 @@ sub setup {
         return (1, $dir, $date_dirs_ptr, \%lookup_hash);
     }
 
-    if ($state eq 'northcarolina' && exists ($lookup_hash{'northcarolina_source_repository'})) {
+    if ($state eq 'northcarolina') {
         my ($date_dirs_ptr) = byzip_setup_northcarolina::setup_state ($dir, \%lookup_hash);
-        # return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+        return (1, $dir, $date_dirs_ptr, \%lookup_hash);
     }
 
     #

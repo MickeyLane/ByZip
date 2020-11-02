@@ -15,12 +15,13 @@ use File::Copy qw(move);
 use PerlIO::gzip;
 
 use lib '.';
-use byzip_cleanups;
 
 sub setup_state {
     my $dir = shift;
+    my $lookup_hash_ptr = shift;
 
     my @date_dirs;
+    my $repository = $lookup_hash_ptr->{'pensylvania_source_repository'};
 
     opendir (DIR, $dir) or die "Can't open $dir: $!";
     while (my $fn = readdir (DIR)) {
@@ -38,7 +39,7 @@ sub setup_state {
                 # ...\Maryland\YYYY-MM-DD found
                 #
                 my $destination_file = "$dir/$fn/converted.csv";
-                my $source_file = "D:/Covid/Pennsylvania/covid19-philadelphia/cases_by_zipcode/covid_cases_by_zip_$1-$2-$3.csv.gz";
+                my $source_file = "$repository/cases_by_zipcode/covid_cases_by_zip_$1-$2-$3.csv.gz";
 
                 if (!(-e $destination_file)) {
                     #
@@ -131,8 +132,8 @@ sub cleanup_pennsylvania_csv_files {
             # push (@csv_records, "zip_code,etl_timestamp,neg,cases");
         }
         else {
-            # $record = remove_double_quotes_from_column_values ($record);
-            # $record = remove_commas_from_double_quoted_column_values ($record);
+            $record = main::remove_double_quotes_from_column_values ($record);
+            $record = main::remove_commas_from_double_quoted_column_values ($record);
             my @values = split (',', $record);
             my $value_count = @values;
 
