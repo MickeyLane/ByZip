@@ -23,6 +23,7 @@ use POSIX;
 use File::Copy;
 use DateTime;
 use List::Util qw (max);
+use Scalar::Util qw(looks_like_number);
 
 use lib '.';
 use byzip_c;
@@ -32,7 +33,6 @@ use byzip_debug;
 use byzip_setup;
 use byzip_mt;
 use byzip_make_random_choices;
-use byzip_cleanups;
 
 package main;
 
@@ -53,12 +53,21 @@ $lookup_hash{'root'} = 'D:/ByZip';
 $lookup_hash{'byzip_output_file'} = 'byzip-output.csv';
 my $now = DateTime->now;
 $lookup_hash{'todays_date_string'} = sprintf ("%04d %02d %02d", $now->year(), $now->month(), $now->day());
+if (1) {
+    $lookup_hash{'maryland_source_repository'} = 'D:/Covid/Maryland/covid19_MD';
+    $lookup_hash{'pensylvania_source_repository'} = 'D:/Covid/Pennsylvania/covid19-philadelphia';
+    $lookup_hash{'newyork_source_repository'} = 'D:/Covid/NewYork/coronavirus-data';
+    $lookup_hash{'northcarolina_source_repository_count'} = '2';
+    $lookup_hash{'northcarolina_source_repository_1'} = 'D:/Covid/NorthCarolina/nc-covid-by-zip (obsolete)';
+    $lookup_hash{'northcarolina_source_repository_1_path_to_data'} = 'time_series_data/csv';
+    $lookup_hash{'northcarolina_source_repository_2'} = 'D:/Covid/NorthCarolina/nc-covid-data';
+    $lookup_hash{'northcarolina_source_repository_2_path_to_data'} = 'zip_level_data/time_series_data/csv';
+}
 
 #
 # SET PROGRAM PARAMETERS
 # ======================
 #
-my $pp_create_missing_directories = 1;
 my $pp_report_sim_messages = 0;
 my $pp_report_adding_case = 0;
 my $pp_dont_do_sims = 0;
@@ -80,7 +89,6 @@ my $plot_output_flag = 0;
 my $max_cured = 0;
 my $max_cured_line_number = __LINE__;
 my $report_data_collection_messages = 0;  # default 'no'
-my $development_machine = 0;
 
 #
 # Get input arguments
@@ -93,9 +101,6 @@ my $max_display_switch_string_len = length ($max_display_switch);
 
 my $report_collection_switch = 'report_collection=';
 my $report_collection_switch_string_len = length ($report_collection_switch);
-
-my $development_machine_switch = 'development_machine=';
-my $development_machine_switch_string_len = length ($development_machine_switch);
 
 foreach my $switch (@ARGV) {
     my $lc_switch = lc $switch;
@@ -140,15 +145,6 @@ foreach my $switch (@ARGV) {
         my $val = substr ($switch, $report_collection_switch_string_len);
         $report_data_collection_messages = int ($val);
     }
-    elsif (index ($lc_switch, $development_machine_switch) != -1) {
-        #
-        # The development_machine switch is used to indicate that the script
-        # is being run on a machine that has the git repositories for the data
-        # sources and the Windows batch job to initialize stuff each new day
-        #
-        my $val = substr ($switch, $development_machine_switch_string_len);
-        $development_machine = int ($val);
-    }
     elsif ($lc_switch eq 'help' || $lc_switch eq 'h') {
         print_help ($duration_min, $duration_max);
         exit (1);
@@ -189,11 +185,7 @@ print ("  Clip cured plot line at $max_cured. (Use $max_display_switch)\n");
 #
 # Select state, pick directories, inventory directories, make missing directories
 #
-my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup (
-    $state,
-    $pp_create_missing_directories,
-    $development_machine,
-    \%lookup_hash);
+my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup ($state, \%lookup_hash);
 if ($status == 0) {
     exit (1);
 }
@@ -1052,9 +1044,9 @@ sub validate_possibly_useful_records {
             print ("  \$record = $record\n");
         }
 
-        $record = byzip_cleanups::remove_double_quotes_from_column_values ($record);
+        $record = remove_double_quotes_from_column_values ($record);
 
-        $record = byzip_cleanups::remove_commas_from_double_quoted_column_values ($record);
+        $record = remove_commas_from_double_quoted_column_values ($record);
 
         my @list = split (',', $record);
 
@@ -1130,7 +1122,7 @@ sub validate_possibly_useful_records {
             # print ("  Changing '5 to 9' to 7\n");
             $cases = '7';
         }
-        elsif ($cases =~ /[\D]/) {
+        elsif (!(looks_like_number($cases))) {
             print ("  Non numeric found in cases field is $cases\n");
             exit (1);
         }
@@ -1189,3 +1181,67 @@ sub print_help {
     print ("    TBD..\n");
 }
 
+#
+# If a row value is wrapped in double quotes, remove the double quotes
+# Sometimes row values are wrapped in double quotes but also contain commas
+# These will not be changed
+#
+# Example:
+#
+#    ,"4" becomes 4
+#    ,"tom, dick, harry", will be split into "tom
+#                                             dick
+#                                             harry"
+#
+sub remove_double_quotes_from_column_values {
+    my $record = shift;
+
+    my @list = split (',', $record);
+    my $len = @list;
+    for (my $i = 0; $i < $len; $i++) {
+        my $val = $list[$i];
+        if ($val =~ /^\"/ && $val =~ /\"\z/) {
+            my $new_val = substr ($val, 1, length ($val) - 2);
+            $list[$i] = $new_val;
+        }
+    }
+    $record = join (',', @list);
+
+    return ($record);
+}
+
+#
+# If a field is wrapped in double quotes and it contains commas within the quotes,
+# convert the commas to dashes and delete the double quotes
+#
+# This needs to be done prior to spliting the record or the commas will mess up the
+# count of columns
+#
+sub remove_commas_from_double_quoted_column_values {
+    my ($record) = @_;
+    
+    my $left_double_quote = index ($record, '"');
+    if ($left_double_quote == -1) {
+        return ($record);
+    }
+
+    my $right_double_quote = index ($record, '"', $left_double_quote + 1);
+    if ($right_double_quote == -1) {
+        print ("Record has a single double quote\n");
+        exit (1);
+    }
+
+    my $len = $right_double_quote - $left_double_quote;
+    my $temp = substr ($record, $left_double_quote + 1, $len - 1);
+
+    # print ("  \$temp = $temp\n");
+
+    $temp =~ s/, /-/g;
+    $temp =~ s/,/-/g;
+
+    my $left_half = substr ($record, 0, $left_double_quote);
+    my $right_half = substr ($record, $right_double_quote + 1);
+
+    return (remove_commas_from_double_quoted_column_values (
+        $left_half . $temp . $right_half));
+}
