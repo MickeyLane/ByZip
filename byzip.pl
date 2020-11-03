@@ -33,6 +33,7 @@ use byzip_debug;
 use byzip_setup;
 use byzip_mt;
 use byzip_make_random_choices;
+use byzip_setup_lookup_hash;
 
 package main;
 
@@ -40,33 +41,26 @@ package main;
 # Any variable that begins with 'fq_' is supposed to contain a fully qualified file name
 # Any variable that begins with 'pp_' is a program parameter and is usually a flag to enable
 #   or disable some feature
-# Any variable that begins with 'fp_' is a floating point value. Not used very often
 #
 
 #
-# SET UP LOCATION & FILE NAME HASH
-# ================================
+# Get current directory and determine platform
 #
-#
-my %lookup_hash;
-$lookup_hash{'root'} = 'D:/ByZip';
-$lookup_hash{'byzip_output_file'} = 'byzip-output.csv';
-my $now = DateTime->now;
-$lookup_hash{'todays_date_string'} = sprintf ("%04d %02d %02d", $now->year(), $now->month(), $now->day());
-if (1) {
-    $lookup_hash{'maryland_source_repository'} = 'D:/Covid/Maryland/covid19_MD';
-    $lookup_hash{'pensylvania_source_repository'} = 'D:/Covid/Pennsylvania/covid19-philadelphia';
-    $lookup_hash{'newyork_source_repository'} = 'D:/Covid/NewYork/coronavirus-data';
-    $lookup_hash{'northcarolina_source_repository_count'} = '2';
-    $lookup_hash{'northcarolina_source_repository_1'} = 'D:/Covid/NorthCarolina/nc-covid-by-zip (obsolete)';
-    $lookup_hash{'northcarolina_source_repository_1_path_to_data'} = 'time_series_data/csv';
-    $lookup_hash{'northcarolina_source_repository_2'} = 'D:/Covid/NorthCarolina/nc-covid-data';
-    $lookup_hash{'northcarolina_source_repository_2_path_to_data'} = 'zip_level_data/time_series_data/csv';
+my $windows_flag;
+my $cwd = Cwd::cwd();
+$windows_flag = 0;
+if ($cwd =~ /^[C-Z]:/) {
+    $windows_flag = 1;
 }
 
 #
-# SET PROGRAM PARAMETERS
-# ======================
+# All the personalization lives in the lookup_hash. Set that up
+#
+my $ptr = byzip_setup_lookup_hash::setup_lookup_hash ($windows_flag);
+my %lookup_hash = %$ptr;
+
+#
+# Set program parameters
 #
 my $pp_report_sim_messages = 0;
 my $pp_report_adding_case = 0;
@@ -74,8 +68,8 @@ my $pp_dont_do_sims = 0;
 my $pp_report_header_changes = 0;
 
 #
-# COMMAND LINE ARGUMENTS
-# ======================
+# COMMAND LINE PROCESSING
+# =======================
 #
 # Set defaults
 #
@@ -83,7 +77,7 @@ my $zip_string;
 my $duration_min = 9;
 my $duration_max = 19;
 my $untested_positive = 0;
-my $mortality = 0;
+my $manually_set_mortality_rate = 0;
 my $severity = '40:40:20';
 my $plot_output_flag = 0;
 my $max_cured = 0;
@@ -115,7 +109,7 @@ foreach my $switch (@ARGV) {
         }
     }
     elsif (index ($lc_switch, 'mortality=') != -1) {
-        $mortality = substr ($switch, 10);
+        $manually_set_mortality_rate = substr ($switch, 10);
     }
     elsif (index ($lc_switch, 'duration_min=') != -1) {
         my $val = substr ($switch, 13);
@@ -165,11 +159,11 @@ my ($state, $lookup_hash_ptr) = choose_state ($zip_string, \%lookup_hash);
 print ("Simulation values:\n");
 print ("  Zip = $zip_string\n");
 print ("  State = $state\n");
-if ($mortality == 0) {
+if ($manually_set_mortality_rate == 0) {
     print ("  Mortality = using OWID derived table of daily percentage rates\n");
 }
 else {
-    print ("  Mortality = $mortality percent\n");
+    print ("  Mortality = $manually_set_mortality_rate percent\n");
 }
 print ("  Duration_min = $duration_min days\n");
 print ("  Duration_max = $duration_max days\n");
@@ -589,7 +583,7 @@ foreach my $case_hash_ptr (@cases_list) {
     #
     if (predict_case_is_fatal (
             \%mortality_table,
-            $mortality,
+            $manually_set_mortality_rate,
             $begin_dt)) {
         #
         # Case is fatal. Assume 5-10 days sick
@@ -984,33 +978,33 @@ sub get_possibly_useful_records {
 # Return yes (1) or no (0)
 #
 sub predict_case_is_fatal {
-    my $mortality_table_ptr = shift;
+    my $manually_set_mortality_rate_table_ptr = shift;
     my $fixed_mortality = shift;
     my $local_begin_dt = shift;
 
-    my $mortality;
+    my $manually_set_mortality_rate;
 
     if (1) {
         my $key = main::make_printable_date_string ($local_begin_dt);
-        my $fp_val = $mortality_table_ptr->{$key};
-        if (!(defined ($fp_val))) {
+        my $val = $manually_set_mortality_rate_table_ptr->{$key};
+        if (!(defined ($val))) {
             print ("No value found in mortality hash table for $key\n");
             exit (1);
         }
 
-        $mortality = $fp_val;
+        $manually_set_mortality_rate = $val;
     }
     else {
-        $mortality = $fixed_mortality;
+        $manually_set_mortality_rate = $fixed_mortality;
     }
 
-    my $mortality_x_10 = int ($mortality * 10);
+    my $manually_set_mortality_rate_x_10 = int ($manually_set_mortality_rate * 10);
 
     #
     # Get a random value between 1 and 1000 inclusive
     #
     my $random_mortality = int (rand (1000) + 1);
-    if ($random_mortality <= $mortality_x_10) {
+    if ($random_mortality <= $manually_set_mortality_rate_x_10) {
         #
         # Dies
         #

@@ -149,8 +149,10 @@ sub fill_mortality_hash {
         my $deaths = int ($list[$total_death]);
         my $cases = int ($list[$total_case]);
 
-        my $fp_percent = ($deaths/ $cases) * 100;
-        $mortality_table{$data_my_str} = $fp_percent;
+        #
+        # Compute the percentage. Result is a floating point number
+        #
+        $mortality_table{$data_my_str} = ($deaths/ $cases) * 100;
     }
 
     return (\%mortality_table);
