@@ -179,7 +179,7 @@ print ("  Clip cured plot line at $max_cured. (Use $max_display_switch)\n");
 #
 # Select state, pick directories, inventory directories, make missing directories
 #
-my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup ($state, \%lookup_hash);
+my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup ($state, \%lookup_hash, $windows_flag);
 if ($status == 0) {
     exit (1);
 }

@@ -7,6 +7,16 @@ use strict;
 # SET UP LOCATION & FILE NAME HASH
 # ================================
 #
+#
+# This file is kept as a seperate thing so the great number of comments don't
+# overwhelm the main script. It's kind of like a .cfg file on Linux
+#
+# Input:
+#    Nothing
+#
+# Output:
+#    A pointer to a configured %lookup_hash
+#
 sub setup_lookup_hash {
     my $windows_flag = shift;
 

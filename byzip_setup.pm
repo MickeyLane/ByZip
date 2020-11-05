@@ -18,110 +18,29 @@ use byzip_setup_maryland;
 use byzip_setup_pennsylvania;
 use byzip_setup_northcarolina;
 
-#
-# Edit the following as needed. If you are using Linux, ignore '_windows' and vice versa
-#
-my $fq_florida_root_dir_for_windows = 'D:/ByZip/Florida';
-my $fq_florida_root_dir_for_linux = '/home/mickey/ByZip/Florida';
-my $fq_newyork_root_dir_for_windows = 'D:/ByZip/NewYork';
-my $fq_newyork_root_dir_for_linux = '/home/mickey/ByZip/NewYork';
-my $fq_maryland_root_dir_for_windows = 'D:/ByZip/Maryland';
-my $fq_maryland_root_dir_for_linux = '/home/mickey/ByZip/Maryland';
-my $fq_northcarolina_root_dir_for_windows = 'D:/ByZip/NorthCarolina';
-my $fq_northcarolina_root_dir_for_linux = '/home/mickey/ByZip/NorthCarolina';
-my $fq_pennsylvania_root_dir_for_windows = 'D:/ByZip/Pennsylvania';
-my $fq_pennsylvania_root_dir_for_linux = '/home/mickey/ByZip/Pennsylvania';
-
-my $pp_first_florida_directory = '2020-04-08';
-my $pp_first_newyork_directory = '2020-03-31';
-my $pp_first_maryland_directory = '2020-04-12';
-my $pp_first_northcarolina_directory = '2020-05-01';
-my $pp_first_pennsylvania_directory = '2020-06-17';
-
 sub setup {
     my $state = shift;
     my $lookup_hash_ptr = shift;
+    my $windows_flag = shift;
+
     my %lookup_hash = %$lookup_hash_ptr;
 
     print ("Setup...\n");
-
-    my $dir;
-    my $first_dir;
-    my $first_dir_date_string;
+    
     my $output_file_name = $lookup_hash{'byzip_output_file'};
 
-    #
-    # Get current directory and determine platform
-    #
-    my $windows_flag;
-    my $cwd = Cwd::cwd();
-    $windows_flag = 0;
-    if ($cwd =~ /^[C-Z]:/) {
-        $windows_flag = 1;
-    }
+    my $key = $state . '_root';
+    my $dir = $lookup_hash{$key};
+    $key = 'first_' . $state . '_date_directory';
+    my $first_dir_date_string = $lookup_hash{$key};
+    my $first_dir = "$dir/$first_dir_date_string";
 
-    if ($windows_flag && $state eq 'newyork') {
-        $dir = lc $fq_newyork_root_dir_for_windows;
-        $first_dir = "$dir/$pp_first_newyork_directory";
-        $first_dir_date_string = $pp_first_newyork_directory;
-    }
-    elsif ($windows_flag == 0 && $state eq 'newyork') {
-        $dir = lc $fq_newyork_root_dir_for_linux;
-        $first_dir = "$dir/$pp_first_newyork_directory";
-        $first_dir_date_string = $pp_first_newyork_directory;
-    }
-    elsif ($windows_flag && $state eq 'florida') {
-        $dir = lc $fq_florida_root_dir_for_windows;
-        $first_dir = "$dir/$pp_first_florida_directory";
-        $first_dir_date_string = $pp_first_florida_directory;
-    }
-    elsif ($windows_flag == 0 && $state eq 'florida') {
-        $dir = lc $fq_florida_root_dir_for_linux;
-        $first_dir = "$dir/$pp_first_florida_directory";
-        $first_dir_date_string = $pp_first_florida_directory;
-    }
-    elsif ($windows_flag && $state eq 'maryland') {
-        $dir = lc $fq_maryland_root_dir_for_windows;
-        $first_dir = "$dir/$pp_first_maryland_directory";
-        $first_dir_date_string = $pp_first_maryland_directory;
-    }
-    elsif ($windows_flag == 0 && $state eq 'maryland') {
-        $dir = lc $fq_maryland_root_dir_for_linux;
-        $first_dir = "$dir/$pp_first_maryland_directory";
-        $first_dir_date_string = $pp_first_maryland_directory;
-    }
-    elsif ($windows_flag && $state eq 'northcarolina') {
-        $dir = lc $fq_northcarolina_root_dir_for_windows;
-        $first_dir = "$dir/$pp_first_northcarolina_directory";
-        $first_dir_date_string = $pp_first_northcarolina_directory;
-    }
-    elsif ($windows_flag == 0 && $state eq 'northcarolina') {
-        $dir = lc $fq_northcarolina_root_dir_for_linux;
-        $first_dir = "$dir/$pp_first_northcarolina_directory";
-        $first_dir_date_string = $pp_first_northcarolina_directory;
-    }
-    elsif ($windows_flag && $state eq 'pennsylvania') {
-        $dir = lc $fq_pennsylvania_root_dir_for_windows;
-        $first_dir = "$dir/$pp_first_pennsylvania_directory";
-        $first_dir_date_string = $pp_first_pennsylvania_directory;
-    }
-    elsif ($windows_flag == 0 && $state eq 'pennsylvania') {
-        $dir = lc $fq_pennsylvania_root_dir_for_linux;
-        $first_dir = "$dir/$pp_first_pennsylvania_directory";
-        $first_dir_date_string = $pp_first_pennsylvania_directory;
-    }
-    else {
-        print ("Can't figure out base \$dir\n");
-        print ("  \$windows_flag = $windows_flag\n");
-        print ("  \$state = $state\n");
-        exit (1);
-    }
 
     #
     # Go to root dir
     #
     $CWD = $dir;
-    $cwd = Cwd::cwd();
+    # my $cwd = Cwd::cwd();
 
     if (!(-e $first_dir)) {
         print ("Creating first directory...\n");
