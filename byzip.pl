@@ -564,27 +564,38 @@ print ("Last serial = $last_serial, largest = $largest_serial\n");
 #
 # This creates a hash table with mortality rates for each date being simulated
 #
-my ($mt_status, $mt_hash_ptr, $table_ptr) = byzip_mt::get_mortality_records_from_server (\%lookup_hash, \@date_dirs);
-if ($mt_status != 1) {
-    exit (1);
+my %mortality_table;
+my ($mt_status, $mt_lookup_hash_ptr, $mortality_table_ptr) = byzip_mt::set_up_mortality_table (
+    \%lookup_hash, \@date_dirs, $manually_set_mortality_rate);
+if ($mt_status == 1) {
+    %lookup_hash = %$mt_lookup_hash_ptr;
+    %mortality_table = %$mortality_table_ptr;
 }
-%lookup_hash = %$mt_hash_ptr;
-my %mortality_table = %$table_ptr;
+else {
+    die;
+}
 
 #
 # DETERMINE FATAL CASES
 # =====================
 #
 foreach my $case_hash_ptr (@cases_list) {
-    my $begin_dt = $case_hash_ptr->{'begin_dt'};
+    my $case_begin_dt = $case_hash_ptr->{'begin_dt'};
+    my $case_begin_date_string = sprintf ("%04d-%02d-%02d",
+        $case_begin_dt->year(), $case_begin_dt->month(), $case_begin_dt->day());
 
-    #
-    # Determine if this patient is going to die
-    #
-    if (predict_case_is_fatal (
-            \%mortality_table,
-            $manually_set_mortality_rate,
-            $begin_dt)) {
+    if (!(exists ($mortality_table{$case_begin_date_string}))) {
+        print ("Sim date: $case_begin_date_string\n");
+        print ("Mortality table does not have this key\n");
+        die;
+    }
+
+    my $rate_x_10 = 10 * $mortality_table{$case_begin_date_string};
+
+    my $random_mortality = int (rand (1000) + 1);
+
+    if ($random_mortality <= $rate_x_10) {
+
         #
         # Case is fatal. Assume 5-10 days sick
         #
@@ -594,7 +605,7 @@ foreach my $case_hash_ptr (@cases_list) {
         my $sickness_dur = DateTime::Duration->new (
             days        => $length_of_sickness_for_this_case);
 
-        my $end_dt = $begin_dt->clone();
+        my $end_dt = $case_begin_dt->clone();
         $end_dt->add_duration ($sickness_dur);
 
         $case_hash_ptr->{'ending_status'} = 'dead';
@@ -977,46 +988,45 @@ sub get_possibly_useful_records {
 #
 # Return yes (1) or no (0)
 #
-sub predict_case_is_fatal {
-    my $manually_set_mortality_rate_table_ptr = shift;
-    my $fixed_mortality = shift;
-    my $local_begin_dt = shift;
+# sub predict_case_is_fatal {
+#     my $manually_set_mortality_rate_table_ptr = shift;
+#     my $local_begin_dt = shift;
 
-    my $manually_set_mortality_rate;
+#     my $manually_set_mortality_rate;
 
-    if (1) {
-        my $key = main::make_printable_date_string ($local_begin_dt);
-        my $val = $manually_set_mortality_rate_table_ptr->{$key};
-        if (!(defined ($val))) {
-            print ("No value found in mortality hash table for $key\n");
-            exit (1);
-        }
+#     if (1) {
+#         my $key = main::make_printable_date_string ($local_begin_dt);
+#         my $val = $manually_set_mortality_rate_table_ptr->{$key};
+#         if (!(defined ($val))) {
+#             print ("No value found in mortality hash table for $key\n");
+#             exit (1);
+#         }
 
-        $manually_set_mortality_rate = $val;
-    }
-    else {
-        $manually_set_mortality_rate = $fixed_mortality;
-    }
+#         $manually_set_mortality_rate = $val;
+#     }
+#     else {
+#         $manually_set_mortality_rate = $fixed_mortality;
+#     }
 
-    my $manually_set_mortality_rate_x_10 = int ($manually_set_mortality_rate * 10);
+#     my $manually_set_mortality_rate_x_10 = int ($manually_set_mortality_rate * 10);
 
-    #
-    # Get a random value between 1 and 1000 inclusive
-    #
-    my $random_mortality = int (rand (1000) + 1);
-    if ($random_mortality <= $manually_set_mortality_rate_x_10) {
-        #
-        # Dies
-        #
-        return (1);
-    }
-    else {
-        #
-        # Lives
-        #
-        return (0);
-    }
-}
+#     #
+#     # Get a random value between 1 and 1000 inclusive
+#     #
+#     my $random_mortality = int (rand (1000) + 1);
+#     if ($random_mortality <= $manually_set_mortality_rate_x_10) {
+#         #
+#         # Dies
+#         #
+#         return (1);
+#     }
+#     else {
+#         #
+#         # Lives
+#         #
+#         return (0);
+#     }
+# }
 
 sub validate_possibly_useful_records {
     my $dir = shift;

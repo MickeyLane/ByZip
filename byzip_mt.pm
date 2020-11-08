@@ -9,153 +9,177 @@ use LWP::Simple;
 # This file is part of byzip.pl. See information at the top of that file
 #
 
+#####################################################################################
 #
+# The mortality table is a hash:
 #
+#    Key:  The date in the format YYYY-MM-DD
+#   Value:  A floating point value representing the mortality rate on that date
 #
-sub get_mortality_records_from_server {
+# If the manually set mortality rate is set on the command line, all values are the
+# same. If not, the OWID file is used to select a value for the date. The value represents
+# the entire country.
+#
+sub set_up_mortality_table {
     my $lookup_hash_ptr = shift;
-    my $date_dirs_list_ptr = shift;
+    my $data_dirs_being_used_list_ptr = shift;
+    my $manually_set_mortality_rate = shift;
 
-    print ("OWID mortality data...\n");
-
+    #
+    # Get the lookup hash. Modifications made to this (if any) will be propagated
+    # back to the original table in the main module
+    #
     my %local_lookup_hash = %$lookup_hash_ptr;
 
-    my $root = $local_lookup_hash{'root'};
-    if (!(defined ($root))) {
-        print ("'root' is not defined in the lookup hash\n");
-        exit (1);
+    #
+    # Dates to be simulated have already been determined. Incomming list is
+    # fully qualified path names. Convert to just the dir name.
+    # Get 1st and last
+    #
+    my @data_dirs_being_used_list;
+    foreach my $dd (@$data_dirs_being_used_list_ptr) {
+        my $i = rindex ($dd, '/');
+        push (@data_dirs_being_used_list, substr ($dd, $i + 1));
     }
-    my $todays_date_string_for_file_names = $local_lookup_hash{'todays_date_string'};
-    my $todays_owid_data_file_name = "$root/$todays_date_string_for_file_names owid-covid-data.csv";
-    my $todays_owid_usa_data_file_name = "$root/$todays_date_string_for_file_names owid-usa-covid-data.csv";
+    my $count = @data_dirs_being_used_list;
 
-    #
-    # See if the file already exists. If not, get it
-    #
-    if (!(-e $todays_owid_data_file_name)) {
-        my $owid_url = 'https://covid.ourworldindata.org/data/owid-covid-data.csv';
-        #
-        # Get the world-wide file from the server
-        #
-        print ("  Retreiving today's OWID data...\n");
-        my $code = getstore ($owid_url, $todays_owid_data_file_name);
-        if ($code == 200) {
-            print ("  Success\n");
-        }
-        else {
-            print ("  Getstore response code $code\n");
-            return (0);
-        }
+    my $begin_dt;
+    my $end_dt;
+    my $first_date_for_table = $data_dirs_being_used_list[0];
+    if ($first_date_for_table =~ /(\d{4})-(\d{2})-(\d{2})/) {
+        $begin_dt = DateTime->new(
+            year       => $1,
+            month      => $2,
+            day        => $3
+        );
     }
     else {
-        print ("  Today's OWID file already exists\n");
+        die "Bad date format for begin date";
+    }
+    my $last_date_for_table = $data_dirs_being_used_list[$count - 1];
+    if ($last_date_for_table =~ /(\d{4})-(\d{2})-(\d{2})/) {
+        $end_dt = DateTime->new(
+            year       => $1,
+            month      => $2,
+            day        => $3
+        );
+    }
+    else {
+        die "Bad date format for end date";
     }
 
+    my %mortality_table;
+    my $status;
+
     #
-    # This creates "YYYY MM DD owid-usa_covid-data.csv" if necessary and returns the
-    # content
+    # Two options:
     #
-    my $us_csv_ptr = get_usa_data (
-        $todays_owid_data_file_name,
-        $todays_owid_usa_data_file_name);
+    #    1) Manually specified mortality rate = make table with same value for each date
+    #    2) No specified rate = get OWID file and make table with values specified
+    #
+    if ($manually_set_mortality_rate == 0) {
 
-    my $ptr = fill_mortality_hash ($us_csv_ptr);
-    my %mortality_table = %$ptr;
+        my $root = $local_lookup_hash{'root'};
+        if (!(defined ($root))) {
+            die "'root' is not defined in the lookup hash";
+        }
 
-    # if ($print_mortality_table_and_exit) {
-    #     my @unsorted_records;
-    #     while (my ($key, $val) = each %mortality_table) {
-    #         push (@unsorted_records, "$key $val");
-    #     }
+        my $todays_date_string_for_file_names = $local_lookup_hash{'todays_date_string'};
+        my $todays_owid_data_file_name = "$root/$todays_date_string_for_file_names owid-covid-data.csv";
+        my $todays_owid_usa_data_file_name = "$root/$todays_date_string_for_file_names owid-usa-covid-data.csv";
 
-    #     my @sorted_records = sort (@unsorted_records);
+        $status = get_mortality_records_from_server ($todays_owid_data_file_name);
+        if ($status == 0) {
+            #
+            # Error
+            #
+            return (0);
+        }
+        elsif ($status == 2) {
+            #
+            # New file downloaded
+            #
+            print ("Making extracted USA record file...\n");
 
-    #     foreach my $r (@sorted_records) {
-    #         print ("$r\n");
-    #     }
+            strip_owid_data (
+                $todays_owid_data_file_name,
+                $todays_owid_usa_data_file_name);
+        }
+        else {
+            #
+            # File already exists
+            #
+        }
 
-    #     exit (1);
-    # }
+        print ("  Reading file with extracted USA records\n");
 
-    return (1, \%local_lookup_hash, \%mortality_table);
-}
+        my $date_col = 3;
+        my $total_case = 4;
+        my $total_death = 7;
 
-sub get_usa_data {
-    my $todays_owid_data_file_name = shift;
-    my $todays_owid_usa_data_file_name = shift;
-
-    my $us_csv_ptr;
-
-    if (-e $todays_owid_usa_data_file_name) {
-        #
-        # File exists. Read it
-        #
-        print ("  Reading existing file with extracted USA records\n");
-
-        my @r;
+        # my @r;
         my $record_number = 0;
         open (FILE, "<", $todays_owid_usa_data_file_name) or die "Can't open $todays_owid_usa_data_file_name: $!";
+    
+        my $column_header = <FILE>;
+
         while (my $record = <FILE>) {
             $record_number++;
             chomp ($record);
 
-            push (@r, $record);
+            my @columns = split (',', $record);
+
+            my $date_str = $columns[$date_col];
+            my $from_file_dt;
+            if ($date_str =~ /(\d{4})-(\d{2})-(\d{2})/) {
+                $from_file_dt = DateTime->new(
+                    year       => $1,
+                    month      => $2,
+                    day        => $3
+                );
+            }
+            else {
+                print ("Bad date field in OWID USA file");
+                print ("  \$record = $record\n");
+                print ("  \$date_col = $date_col\n");
+                print ("  \$date_str = $date_str\n");
+                die;
+            }
+
+            if ($from_file_dt < $begin_dt) {
+                next;
+            }
+
+            my $deaths = $columns[$total_death];
+            my $cases = $columns[$total_case];
+            
+            if ($deaths eq '' || $cases eq '') {
+                $mortality_table{$date_str} = 0;
+                next;
+            }
+
+            #
+            # Compute the percentage. Result is a floating point number
+            #
+            $mortality_table{$date_str} = (int ($deaths)/ int ($cases)) * 100;
         }
 
-        $us_csv_ptr = \@r;
+        close (FILE);
+
+        $status = 1;
     }
     else {
-        #
-        # File does not exist. Extract USA data
-        #
-        print ("Making extracted USA record file...\n");
+        print ("Setting up mortality table from fixed value specified on command line...\n");
 
-        $us_csv_ptr = strip_owid_data (
-            $todays_owid_data_file_name,
-            $todays_owid_usa_data_file_name);
-    }
-
-    return ($us_csv_ptr);
-}
-
-sub fill_mortality_hash {
-    my $csv_ptr = shift;
-
-    my %mortality_table;
-
-    my $column_header = shift (@$csv_ptr);
-
-    #
-    # Process records in $csv_ptr
-    #
-    my $date_col = 3;
-    my $total_case = 4;
-    my $total_death = 7;
-    foreach my $r (@$csv_ptr) {
-        my @list = split (',', $r);
-
-        my $date_original_str = $list[$date_col];
-        #
-        # The date string format in the csv file os OK
-        #
-        # my $data_my_str = convert_date_format ($date_original_str);
-        my $data_my_str = $date_original_str;
-
-        if ($list[$total_death] eq '' || $list[$total_case]) {
-            $mortality_table{$data_my_str} = 0;
-            next;
+        foreach my $d (@data_dirs_being_used_list) {
+            # print ("  \$d = $d\n");
+            $mortality_table{$d} = $manually_set_mortality_rate;
         }
 
-        my $deaths = int ($list[$total_death]);
-        my $cases = int ($list[$total_case]);
-
-        #
-        # Compute the percentage. Result is a floating point number
-        #
-        $mortality_table{$data_my_str} = ($deaths/ $cases) * 100;
+        $status = 1;
     }
 
-    return (\%mortality_table);
+    return ($status, \%local_lookup_hash, \%mortality_table);
 }
 
 sub convert_date_format {
@@ -224,8 +248,39 @@ sub strip_owid_data {
     }
 
     close (FILE);
+}
 
-    return (\@out_data);
+#
+#
+#
+sub get_mortality_records_from_server {
+    my $todays_owid_data_file_name = shift;
+
+    print ("Downloading OWID mortality data...\n");
+
+    #
+    # See if the file already exists. If not, get it
+    #
+    if (!(-e $todays_owid_data_file_name)) {
+        my $owid_url = 'https://covid.ourworldindata.org/data/owid-covid-data.csv';
+        #
+        # Get the world-wide file from the server
+        #
+        print ("  Retreiving today's OWID data...\n");
+        my $code = getstore ($owid_url, $todays_owid_data_file_name);
+        if ($code == 200) {
+            print ("  Success\n");
+            return (2);
+        }
+        else {
+            print ("  Getstore response code $code\n");
+            return (0);
+        }
+    }
+    else {
+        print ("  Today's OWID file already exists\n");
+        return (1);
+    }
 }
 
 1;
