@@ -591,11 +591,8 @@ foreach my $case_hash_ptr (@cases_list) {
     }
 
     my $rate_x_10 = 10 * $mortality_table{$case_begin_date_string};
-
     my $random_mortality = int (rand (1000) + 1);
-
     if ($random_mortality <= $rate_x_10) {
-
         #
         # Case is fatal. Assume 5-10 days sick
         #
