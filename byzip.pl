@@ -38,12 +38,6 @@ use byzip_setup_lookup_hash;
 package main;
 
 #
-# Any variable that begins with 'fq_' is supposed to contain a fully qualified file name
-# Any variable that begins with 'pp_' is a program parameter and is usually a flag to enable
-#   or disable some feature
-#
-
-#
 # Get current directory and determine platform
 #
 my $windows_flag;
@@ -229,12 +223,12 @@ foreach my $dir (@date_dirs) {
         # Convert the found relative file name into a fully qualified name
         # If it turns out to be a subdirectory, ignore it
         #
-        my $fq_filename = "$dir/$rel_filename";
-        if (-d $fq_filename) {
+        my $fully_qualified_file_name = "$dir/$rel_filename";
+        if (-d $fully_qualified_file_name) {
             next;
         }
 
-        my ($name, $path, $suffix) = fileparse ($fq_filename, @suffixlist);
+        my ($name, $path, $suffix) = fileparse ($fully_qualified_file_name, @suffixlist);
         $path =~ s/\/\z//;
 
         if ($suffix eq '.csv') {
@@ -243,7 +237,7 @@ foreach my $dir (@date_dirs) {
                 exit (1);
             }
 
-            $found_csv_file = $fq_filename;
+            $found_csv_file = $fully_qualified_file_name;
         }
     }
 

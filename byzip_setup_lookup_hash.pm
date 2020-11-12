@@ -74,9 +74,13 @@ sub setup_lookup_hash {
     else {
         $lookup_hash{'newyork_root'} = lc '/home/mickey/ByZip/NewYork';
         $lookup_hash{'florida_root'} = lc '/home/mickey/ByZip/Florida';
+        $lookup_hash{'maryland_root'} = lc '/home/mickey/ByZip/Maryland';
+        $lookup_hash{'northcarolina_root'} = lc '/home/mickey/ByZip/NorthCarolina';
+        $lookup_hash{'pennsylvania_root'} = lc '/home/mickey/ByZip/Pennsylvania';
     }
+    
     $lookup_hash{'first_newyork_date_directory'} = '2020-03-31';
-    $lookup_hash{'first_florida_date_directory'} = '2020-04-08';
+    $lookup_hash{'first_florida_date_directory'} = '2020-06-12';
     $lookup_hash{'first_maryland_date_directory'} = '2020-04-12';
     $lookup_hash{'first_northcarolina_date_directory'} = '2020-05-01';
     $lookup_hash{'first_pennsylvania_date_directory'} = '2020-06-17';
