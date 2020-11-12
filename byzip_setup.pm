@@ -17,6 +17,7 @@ use lib '.';
 use byzip_setup_maryland;
 use byzip_setup_pennsylvania;
 use byzip_setup_northcarolina;
+use byzip_setup_newyork;
 
 sub setup {
     my $state = shift;
@@ -80,6 +81,10 @@ sub setup {
         return (1, $dir, $date_dirs_ptr, \%lookup_hash);
     }
 
+    if ($state eq 'newyork') {
+        byzip_setup_newyork::setup_state ($dir, \%lookup_hash);
+    }
+
     #
     # Examine $dir
     #
@@ -91,53 +96,22 @@ sub setup {
             next;
         }
 
-        my $fq_fn = "$dir/$fn";
+        my $fully_qualified_file_name = "$dir/$fn";
 
-        if (-d $fq_fn) {
+        if (-d $fully_qualified_file_name) {
             #
             # Directory found
             #
             if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {
                 # my $date = "$1-$2-$3";
-                push (@date_dirs, "$fq_fn");
+                push (@date_dirs, "$fully_qualified_file_name");
             }
         }
         else {
             #
             # File found
             #
-            my @suffixlist = qw (.csv .tsv .gz);
-            my ($name, $path, $suffix) = fileparse ($fq_fn, @suffixlist);
-
-            if ($suffix eq '') {
-                next;
-            }
-            elsif ($suffix eq '.gz') {
-                die;
-            }
-            elsif ($suffix eq '.tsv') {
-                die;
-            }
-            elsif ($suffix eq '.csv') {
-                if ("$name.csv" eq $output_file_name) {
-                    next;
-                }
-
-                if ($fn =~ /nc_zip(\d{2})(\d{2})/) {
-                    my $fq_new_dir = "$dir/2020-$1-$2";
-                    my $fq_new_file = "$fq_new_dir/converted.csv";
-
-                    byzip_cleanups::cleanup_northcarolina_csv_files ($fq_fn, $fq_new_file);
-
-                }
-                else {
-                    print ("Don't know what to do with $fq_fn\n");
-                    exit (1);
-                }
-            }
-            else {
-                print ("Don't know what to do with $fq_fn\n");
-            }
+            print ("Don't know what to do with $fully_qualified_file_name\n");
         }
     }
 
