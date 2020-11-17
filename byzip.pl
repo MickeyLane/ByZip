@@ -67,6 +67,7 @@ my $pp_report_header_changes = 0;
 #
 # Set defaults
 #
+my $number_of_sims = 3;
 my $zip_string;
 my $duration_min = 9;
 my $duration_max = 19;
@@ -104,6 +105,9 @@ foreach my $switch (@ARGV) {
     }
     elsif (index ($lc_switch, 'mortality=') != -1) {
         $manually_set_mortality_rate = substr ($switch, 10);
+    }
+    elsif (index ($lc_switch, 'sims=') != -1) {
+        $number_of_sims = substr ($switch, 5);
     }
     elsif (index ($lc_switch, 'duration_min=') != -1) {
         my $val = substr ($switch, 13);
@@ -206,7 +210,8 @@ my $c = @date_dirs;
 print ("Searching for .csv files in $c dirs and collecting data...\n");
 
 #
-# For each directory specified in dirs.txt, find a .csv file and save records that might be useful
+# For each directory specified in dirs.txt, find a .csv file
+# and save records that might be useful
 #
 my @suffixlist = qw (.csv);
 foreach my $dir (@date_dirs) {
@@ -620,7 +625,6 @@ my $cured_accum = 0;
 my $sick_accum = 0;
 my $untested_positive_accum = 0;
 my $dead_accum = 0;
-my $number_of_sims = 3;
 my @output_csv;
 my $output_count;
 my $output_header;
@@ -706,7 +710,7 @@ foreach my $r (@output_csv) {
 close (FILE);
 
 if ($plot_output_flag) {
-    byzip_plot::make_plot ($dir, \@output_csv, $max_cured, $zip_string);
+    byzip_plot::make_plot ($dir, \@output_csv, $number_of_sims, $max_cured, $zip_string);
 }
 
 #
@@ -1066,12 +1070,13 @@ sub validate_possibly_useful_records {
                 }
             }
         }
-        else {
-            print ("Unable to locate 5 consecutive digits in what is supposed to be the zip code column\n");
-            print ("  \$record = $record\n");
-            print ("  \$this_zip = $this_zip\n");
-            exit (1);
-        }
+        # else {
+        #     print ("Unable to locate 5 consecutive digits in what is supposed to be the zip code column\n");
+        #     print ("  File: $csv_file_name\n");
+        #     print ("  \$record = $record\n");
+        #     print ("  \$this_zip = $this_zip\n");
+        #     # exit (1);
+        # }
 
         if (!$zip_is_good) {
             next;
