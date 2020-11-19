@@ -179,6 +179,8 @@ sub set_up_mortality_table {
         $status = 1;
     }
 
+    # save_mortality_table_to_file (\%mortality_table);
+
     return ($status, \%local_lookup_hash, \%mortality_table);
 }
 
@@ -281,6 +283,25 @@ sub get_mortality_records_from_server {
         print ("  Today's OWID file already exists\n");
         return (1);
     }
+}
+
+sub save_mortality_table_to_file {
+    my $mortality_table_ptr = shift;
+
+    my @pre_sort = keys %$mortality_table_ptr;
+    my @sorted = sort @pre_sort;
+
+    my $fn = 'mortality_table.csv';
+
+    open (FILE, ">", $fn) or die "Can't create $fn: @!";
+
+    foreach my $key (@sorted) {
+        my $val = $mortality_table_ptr->{$key};
+
+        print (FILE "$key = $val\n");
+    }
+
+    close (FILE);
 }
 
 1;
