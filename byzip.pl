@@ -78,6 +78,8 @@ my $plot_output_flag = 0;
 my $max_cured = 0;
 my $max_cured_line_number = __LINE__;
 my $report_data_collection_messages = 0;  # default 'no'
+my $begin_sim_dt;
+my $begin_display_dt;
 
 #
 # Get input arguments
@@ -90,6 +92,12 @@ my $max_display_switch_string_len = length ($max_display_switch);
 
 my $report_collection_switch = 'report_collection=';
 my $report_collection_switch_string_len = length ($report_collection_switch);
+
+my $first_sim_date_switch = 'first_sim_date=';
+my $first_sim_date_switch_string_len = length ($first_sim_date_switch);
+
+my $first_display_date_switch = 'first_display_date=';
+my $first_display_date_switch_string_len = length ($first_display_date_switch);
 
 foreach my $switch (@ARGV) {
     my $lc_switch = lc $switch;
@@ -141,6 +149,32 @@ foreach my $switch (@ARGV) {
         print_help ($duration_min, $duration_max);
         exit (1);
     }
+    elsif (index ($lc_switch, $first_sim_date_switch) != -1) {
+        my $val = substr ($lc_switch, $first_sim_date_switch_string_len);
+        if ($val =~ /(\d{4})-(\d{2})-(\d{2})/) {
+            $begin_sim_dt = DateTime->new(
+                    year       => $1,
+                    month      => $2,
+                    day        => $3)
+        }
+        else {
+            print ("Invalid argument to $first_sim_date_switch\n");
+            exit (2);
+        }
+    }
+    elsif (index ($lc_switch, $first_display_date_switch) != -1) {
+        my $val = substr ($lc_switch, $first_display_date_switch_string_len);
+        if ($val =~ /(\d{4})-(\d{2})-(\d{2})/) {
+            $begin_display_dt = DateTime->new(
+                    year       => $1,
+                    month      => $2,
+                    day        => $3)
+        }
+        else {
+            print ("Invalid argument to $first_display_date_switch\n");
+            exit (2);
+        }
+    }
     else {
         print ("Don't know what to do with $switch\n");
         exit (1);
@@ -149,6 +183,20 @@ foreach my $switch (@ARGV) {
 
 my ($state, $lookup_hash_ptr) = choose_state ($zip_string, \%lookup_hash);
 %lookup_hash = %$lookup_hash_ptr;
+
+#
+# SETUP
+# =====
+#
+# Select state, pick directories, inventory directories, make missing directories
+#
+my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup (
+    $state, \%lookup_hash, $windows_flag, $begin_sim_dt);
+if ($status == 0) {
+    exit (1);
+}
+%lookup_hash = %$hash_ptr;
+my @date_dirs = @$date_dirs_list_ptr;
 
 #
 # REPORT SIMULATION PARAMETERS
@@ -170,25 +218,11 @@ print ("  Untested = add $untested_positive untested positive cases for every on
 # print ("      (Values are percents, total must be 100)\n");
 print ("  Plot output = $plot_output_flag (0 = no, 1 = yes)\n");
 print ("  Clip cured plot line at $max_cured. (Use $max_display_switch)\n");
-
-#
-# SETUP
-# =====
-#
-# Select state, pick directories, inventory directories, make missing directories
-#
-my ($status, $dir, $date_dirs_list_ptr, $hash_ptr) = byzip_setup::setup ($state, \%lookup_hash, $windows_flag);
-if ($status == 0) {
-    exit (1);
-}
-%lookup_hash = %$hash_ptr;
-
-print ("Current working directory is $dir\n");
+print ("  Current working directory is $dir\n");
 
 my @cases_list;
 my %previous_cases_hash;
 my $case_serial_number = 1;
-my @date_dirs = @$date_dirs_list_ptr;
 
 #
 # Make a list of zips to test. Could be only one
@@ -652,6 +686,8 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
     my $len = @this_run_output;
     my $last_record = $this_run_output[$len - 1];
 
+    print ("\$last_record = $last_record\n");
+
     #
     # Seperate the fields of the last record and add the 4 counts to the accumulators
     #
@@ -1070,13 +1106,6 @@ sub validate_possibly_useful_records {
                 }
             }
         }
-        # else {
-        #     print ("Unable to locate 5 consecutive digits in what is supposed to be the zip code column\n");
-        #     print ("  File: $csv_file_name\n");
-        #     print ("  \$record = $record\n");
-        #     print ("  \$this_zip = $this_zip\n");
-        #     # exit (1);
-        # }
 
         if (!$zip_is_good) {
             next;
@@ -1179,6 +1208,15 @@ sub print_help {
 
     print ("\n  mortality=n.n\n");
     print ("    TBD..\n");
+
+    print ("\n  first_sim_date=YYYY-MM-DD\n");
+    print ("    Ordinarily, the first simulation date is determined by the first available date\n");
+    print ("    directory. In a situation where there is no significant counts for a long period,\n");
+    print ("    this switch will discard dates prior to what is specified. DO NOT use to reduce\n");
+    print ("    chart display width. See README.md for details on false starts\n");
+
+    print ("\n  first_display_date=YYYY-MM-DD\n");
+    print ("    Sets the first date used in the display.\n");
 }
 
 #
