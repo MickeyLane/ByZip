@@ -14,6 +14,7 @@ use List::Util qw(min);
 sub make_plot {
     my $dir = shift;
     my $csv_ptr = shift;
+    my $sims = shift;
     my $max_cured = shift;
     my $title = shift;
 
@@ -56,10 +57,18 @@ sub make_plot {
         $untested_positive_sick_1_array[$i] = $columns[$column_index++];
         $dead_1_array[$i] = $columns[$column_index++];
         
+        if ($sims == 1) {
+            next;
+        }
+
         $cured_2_array[$i] = min ($columns[$column_index++], $max_cured);
         $sick_2_array[$i] = $columns[$column_index++];
         $untested_positive_sick_2_array[$i] = $columns[$column_index++];
         $dead_2_array[$i] = $columns[$column_index++];
+        
+        if ($sims == 2) {
+            next;
+        }
         
         $cured_3_array[$i] = min ($columns[$column_index++], $max_cured);
         $sick_3_array[$i] = $columns[$column_index++];
@@ -74,15 +83,19 @@ sub make_plot {
     push (@data, \@untested_positive_sick_1_array);
     push (@data, \@dead_1_array);
 
-    push (@data, \@cured_2_array);
-    push (@data, \@sick_2_array);
-    push (@data, \@untested_positive_sick_2_array);
-    push (@data, \@dead_2_array);
+    if ($sims > 1) {
+        push (@data, \@cured_2_array);
+        push (@data, \@sick_2_array);
+        push (@data, \@untested_positive_sick_2_array);
+        push (@data, \@dead_2_array);
+    }
 
-    push (@data, \@cured_3_array);
-    push (@data, \@sick_3_array);
-    push (@data, \@untested_positive_sick_3_array);
-    push (@data, \@dead_3_array);
+    if ($sims > 2) {
+        push (@data, \@cured_3_array);
+        push (@data, \@sick_3_array);
+        push (@data, \@untested_positive_sick_3_array);
+        push (@data, \@dead_3_array);
+    }
 
     my $graph_file = "$dir/graph.gif";
 
@@ -95,7 +108,9 @@ sub make_plot {
             dclrs 		=> [ 'green', 'orange', 'blue', 'red' ], 
             borderclrs 	=> [ qw(black black), qw(black black) ], 
             bar_spacing => 4, 
-            transparent => 1,
+            transparent => 0,
+            bgclr => 'white',
+            line_width => 3,
             show_values => 0,
             x_labels_vertical => 1
     ); 
