@@ -84,7 +84,7 @@ sub set_up_mortality_table {
             die "'root' is not defined in the lookup hash";
         }
 
-        my $todays_date_string_for_file_names = $local_lookup_hash{'todays_date_string'};
+        my $todays_date_string_for_file_names = $local_lookup_hash{'todays_date_string_for_file_names'};
         my $todays_owid_data_file_name = "$root/$todays_date_string_for_file_names owid-covid-data.csv";
         my $todays_owid_usa_data_file_name = "$root/$todays_date_string_for_file_names owid-usa-covid-data.csv";
 

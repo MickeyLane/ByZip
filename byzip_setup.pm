@@ -23,6 +23,7 @@ sub setup {
     my $state = shift;
     my $lookup_hash_ptr = shift;
     my $windows_flag = shift;
+    my $begin_sim_dt = shift;
 
     my %lookup_hash = %$lookup_hash_ptr;
 
@@ -36,6 +37,7 @@ sub setup {
     my $first_dir_date_string = $lookup_hash{$key};
     my $first_dir = "$dir/$first_dir_date_string";
 
+    my @date_dirs;
 
     #
     # Go to root dir
@@ -68,17 +70,23 @@ sub setup {
     #
     if ($state eq 'maryland' && exists ($lookup_hash{'maryland_source_repository'})) {
         my ($date_dirs_ptr) = byzip_setup_maryland::setup_state ($dir, \%lookup_hash);
-        return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+        # return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+        @date_dirs = @$date_dirs_ptr;
+        goto trim;
     }
 
-    if ($state eq 'pennsylvania' && exists ($lookup_hash{'pensylvania_source_repository'})) {
+    if ($state eq 'pennsylvania') {
         my ($date_dirs_ptr) = byzip_setup_pennsylvania::setup_state ($dir, \%lookup_hash);
-        return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+        if (defined ($date_dirs_ptr)) {
+            @date_dirs = @$date_dirs_ptr;
+            goto trim;
+        }
     }
 
     if ($state eq 'northcarolina') {
         my ($date_dirs_ptr) = byzip_setup_northcarolina::setup_state ($dir, \%lookup_hash);
-        return (1, $dir, $date_dirs_ptr, \%lookup_hash);
+        @date_dirs = @$date_dirs_ptr;
+        goto trim;
     }
 
     if ($state eq 'newyork') {
@@ -86,10 +94,8 @@ sub setup {
     }
 
     #
-    # Examine $dir
+    # Examine $dir to make a list in @date_dirs
     #
-    my @date_dirs;
-
     opendir (DIR, $dir) or die "Can't open $dir: $!";
     while (my $fn = readdir (DIR)) {
         if ($fn =~ /^[.]/) {
@@ -111,10 +117,27 @@ sub setup {
             #
             # File found
             #
+            if ($fn =~ /.gif\z/) {
+                next;
+            }
+
+            if ($fn =~ /.csv\z/) {
+                next;
+            }
+            
             print ("Don't know what to do with $fully_qualified_file_name\n");
         }
     }
 
+trim:
+
+    #
+    # Trim beginning of date directory array
+    #
+    my $first_date_dir = $date_dirs[0];
+    my $i = rindex ($first_date_dir, '/');
+    my $date_str = substr ($first_date_dir, $i + 1);
+    
     return (1, $dir, \@date_dirs, \%lookup_hash);
 }
 

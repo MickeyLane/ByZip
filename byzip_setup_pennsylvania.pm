@@ -20,8 +20,22 @@ sub setup_state {
     my $dir = shift;
     my $lookup_hash_ptr = shift;
 
+    print ("Setup Pennsylvania...\n");
+
     my @date_dirs;
-    my $repository = $lookup_hash_ptr->{'pensylvania_source_repository'};
+    my $repository = $lookup_hash_ptr->{'pennsylvania_source_repository'};
+    if (!(defined ($repository))) {
+        print ("  Source repository not specified\n");
+        return (undef);
+    }
+    elsif (!(-e $repository)) {
+        print ("  Source repository specified but not found\n");
+        print ("  \$repository = $repository\n");
+        return (undef);
+    }
+
+    my $today_string = $lookup_hash_ptr->{'todays_date_string_directories'};
+    print ("  \$today_string = $today_string\n");
 
     opendir (DIR, $dir) or die "Can't open $dir: $!";
     while (my $fn = readdir (DIR)) {
@@ -29,8 +43,11 @@ sub setup_state {
             next;
         }
         
+        if ($fn eq $today_string) {
+            next;
+        }
+        
         if (-d "$dir/$fn") {
-
 
             if ($fn =~ /(\d{4})-(\d{2})-(\d{2})/) {
                 push (@date_dirs, "$dir/$fn");

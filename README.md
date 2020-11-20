@@ -55,7 +55,7 @@ Some of the options are for debugging and are defaulted ‘off’.
 
 It's been noted by several sources that generating new case data from daily reported totals is subject to error because the report date probably doesn't match the real case date or the reporting pipeline may not function on a daily basis. Making the assumption that the errors are somewhat consistant, it should not pose a problem over the time spans displayed. Anomolies will show up in the graphs if there are problems.
 
-## Simulations
+## Simulation false starts
 
 If the data for a particular zip starts out high and remains flat for some time, the graph display will show an almost straight line decline to some lower value. This is because the simulator has no way of knowing how many of the cases on the 1st day of reporting are actually still sick. Still working on resolving this issue.
 

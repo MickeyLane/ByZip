@@ -124,8 +124,6 @@ sub convert_file {
         print (FILE "$r\n");
     }
     close (FILE);
-
-    unlink ($in) or die "Can't delete $in: $!";
 }
 
 sub find_nc_source_file {
