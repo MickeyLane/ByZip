@@ -24,6 +24,7 @@ use File::Copy;
 use DateTime;
 use List::Util qw (max);
 use Scalar::Util qw(looks_like_number);
+use Config::IniFiles;
 
 use lib '.';
 use byzip_c;
@@ -33,25 +34,33 @@ use byzip_debug;
 use byzip_setup;
 use byzip_mt;
 use byzip_make_random_choices;
-use byzip_setup_lookup_hash;
 
 package main;
 
 #
 # Get current directory and determine platform
 #
-my $windows_flag;
 my $cwd = Cwd::cwd();
-$windows_flag = 0;
+my $windows_flag = 0;
 if ($cwd =~ /^[C-Z]:/) {
     $windows_flag = 1;
 }
 
 #
-# All the personalization lives in the lookup_hash. Set that up
+# All the personalization lives in local_lookup_settings.ini. Read that and init
+# the lookup hash
 #
-my $ptr = byzip_setup_lookup_hash::setup_lookup_hash ($windows_flag);
-my %lookup_hash = %$ptr;
+my $h_ptr = read_ini_file();
+my %lookup_hash = %$h_ptr;
+
+my $root = $lookup_hash{'root'};
+if (!(defined ($root))) {
+    die "Root not defined";
+}
+
+my $now = DateTime->now;
+$lookup_hash{'todays_date_string_directories'} = sprintf ("%04d-%02d-%02d", $now->year(), $now->month(), $now->day());
+$lookup_hash{'todays_date_string_for_file_names'} = sprintf ("%04d %02d %02d", $now->year(), $now->month(), $now->day());
 
 #
 # Set program parameters
@@ -686,7 +695,7 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
     my $len = @this_run_output;
     my $last_record = $this_run_output[$len - 1];
 
-    print ("\$last_record = $last_record\n");
+    # print ("\$last_record = $last_record\n");
 
     #
     # Seperate the fields of the last record and add the 4 counts to the accumulators
@@ -734,7 +743,11 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
     }
 }
 
-my $output_file_name = $lookup_hash_ptr->{'byzip_output_file'};
+my $output_file_name = $lookup_hash{'byzip_output_file'};
+if (!(defined ($output_file_name))) {
+    die "output_file_name not defined";
+}
+
 my $fully_qualified_output_file = "$dir/$output_file_name";
 open (FILE, ">", $fully_qualified_output_file) or die "Can't open $fully_qualified_output_file: $!";
 print (FILE "$output_header\n");
@@ -1282,4 +1295,48 @@ sub remove_commas_from_double_quoted_column_values {
 
     return (remove_commas_from_double_quoted_column_values (
         $left_half . $temp . $right_half));
+}
+
+sub read_ini_file {
+
+    my %lookup_hash;
+
+    my $ini_file = 'local_lookup_settings.ini';
+    my $general_section = 'general';
+    my $data_processing_section = 'data processing';
+
+    my $cfg = Config::IniFiles->new ( -file => $ini_file ) or die "Can't open $ini_file";
+
+    $lookup_hash{'root'} = $cfg->val ($general_section, 'root');
+
+    $lookup_hash{'newyork_root'} = lc $cfg->val ($general_section, 'newyork_root');
+    $lookup_hash{'first_newyork_date_directory'} = $cfg->val ($general_section, 'first_newyork_date_directory');
+    $lookup_hash{'newyork_source_repository'} = $cfg->val ($data_processing_section, 'newyork_source_repository');
+
+    $lookup_hash{'florida_root'} = lc $cfg->val ($general_section, 'florida_root');
+    $lookup_hash{'first_florida_date_directory'} = $cfg->val ($general_section, 'first_florida_date_directory');
+    $lookup_hash{'florida_source_repository'} = $cfg->val ($data_processing_section, 'florida_source_repository');
+
+    $lookup_hash{'maryland_root'} = lc $cfg->val ($general_section, 'maryland_root');
+    $lookup_hash{'first_maryland_date_directory'} = $cfg->val ($general_section, 'first_maryland_date_directory');
+    $lookup_hash{'maryland_source_repository'} = $cfg->val ($data_processing_section, 'maryland_source_repository');
+
+    $lookup_hash{'northcarolina_root'} = lc $cfg->val ($general_section, 'northcarolina_root');
+    $lookup_hash{'first_northcarolina_date_directory'} = $cfg->val ($general_section, 'first_northcarolina_date_directory');
+    $lookup_hash{'northcarolina_source_repository_count'} = $cfg->val ($data_processing_section, 'northcarolina_source_repository_count');
+    $lookup_hash{'northcarolina_source_repository_1'} = $cfg->val ($data_processing_section, 'northcarolina_source_repository_1');
+    $lookup_hash{'northcarolina_source_repository_1_path_to_data'} = $cfg->val ($data_processing_section, 'northcarolina_source_repository_1_path_to_data');
+    $lookup_hash{'northcarolina_source_repository_2'} = $cfg->val ($data_processing_section, 'northcarolina_source_repository_2');
+    $lookup_hash{'northcarolina_source_repository_2_path_to_data'} = $cfg->val ($data_processing_section, 'northcarolina_source_repository_2_path_to_data');
+
+    $lookup_hash{'pennsylvania_root'} = lc $cfg->val ($general_section, 'pennsylvania_root');
+    $lookup_hash{'first_pennsylvania_date_directory'} = $cfg->val ($general_section, 'first_pennsylvania_date_directory');
+    $lookup_hash{'pennsylvania_source_repository'} = $cfg->val ($data_processing_section, 'pennsylvania_source_repository');
+
+    $lookup_hash{'byzip_output_file'} = $cfg->val ($general_section, 'byzip_output_file');
+
+
+
+
+    return (\%lookup_hash);
 }
