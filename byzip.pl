@@ -59,7 +59,7 @@ if (!(defined ($root))) {
 }
 
 my $now = DateTime->now;
-$lookup_hash{'todays_date_string_directories'} = sprintf ("%04d-%02d-%02d", $now->year(), $now->month(), $now->day());
+$lookup_hash{'todays_date_string_for_directories'} = sprintf ("%04d-%02d-%02d", $now->year(), $now->month(), $now->day());
 $lookup_hash{'todays_date_string_for_file_names'} = sprintf ("%04d %02d %02d", $now->year(), $now->month(), $now->day());
 
 #
@@ -244,6 +244,8 @@ if ($i != -1) {
 else {
     push (@zip_list, $zip_string);
 }
+
+my @cases_by_date;
 
 #
 # COLLECT DATA
@@ -449,6 +451,11 @@ foreach my $dir (@date_dirs) {
                 month      => $2,
                 day        => $3
             );
+
+            #
+            # Log new cases for the date
+            #
+            push (@cases_by_date, "$dir $new_cases");
 
             for (my $nc = 0; $nc < $new_cases; $nc++) {
                 my %hash;
@@ -759,7 +766,7 @@ foreach my $r (@output_csv) {
 close (FILE);
 
 if ($plot_output_flag) {
-    byzip_plot::make_plot ($dir, \@output_csv, $number_of_sims, $max_cured, $zip_string);
+    byzip_plot::make_plot ($dir, \@output_csv, $number_of_sims, $max_cured, $zip_string, $begin_display_dt);
 }
 
 #

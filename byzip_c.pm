@@ -60,7 +60,7 @@ sub process {
         my $done_with_this_day = 0;
         my @new_cases_list;
 
-         my $current_sim_epoch = $current_sim_dt->epoch();
+        my $current_sim_epoch = $current_sim_dt->epoch();
 
         my $string_for_debug;
         while (!$done_with_this_day) {
@@ -134,7 +134,24 @@ sub process {
                 # Do NOT put it in the new list
                 #
                 print ("Found a case that ended before the current sim date\n");
-                exit (1);
+                byzip_debug::report_case (
+                    \@new_cases_list,
+                    $top_case_ptr,
+                    \@cases_list);
+
+                my $cases_list_1_ptr = byzip_debug::make_case_list (\@cases_list);
+                my $cases_list_2_ptr = byzip_debug::make_case_list ($top_case_ptr);
+                my $cases_list_3_ptr = byzip_debug::make_case_list (\@new_cases_list);
+
+                my @debug_case_list = @$cases_list_1_ptr;
+                push (@debug_case_list, @$cases_list_2_ptr);
+                push (@debug_case_list, @$cases_list_3_ptr);
+
+                foreach my $dcl (@debug_case_list) {
+                    print ("$dcl\n");
+                }
+
+                die;
             }
 
             if ($this_case_begin_epoch > $current_sim_epoch) {
@@ -205,6 +222,7 @@ sub process {
                         \@new_cases_list,
                         $top_case_ptr,
                         \@cases_list);
+                    die;
                 }
 
                 push (@new_cases_list, $top_case_ptr);
@@ -273,6 +291,7 @@ sub process {
                 \@new_cases_list,
                 $top_case_ptr,
                 \@cases_list);
+            die;
 
 end_of_cases_for_this_sim_date:
 

@@ -17,11 +17,23 @@ sub make_plot {
     my $sims = shift;
     my $max_cured = shift;
     my $title = shift;
+    my $begin_display_dt = shift;
 
     my @data;
     
     my @csv_array = @$csv_ptr;
     my $column_titles = shift (@csv_array);
+    my @columns = split (',', $column_titles);
+    my $column_count = @columns;
+
+    my $computed_number_of_sims = ($column_count - 1) / 4;
+    if ($computed_number_of_sims != $sims) {
+        print ("Sims does not match csv data\n");
+        print ("  \$column_count = $column_count\n");
+        print ("  \$computed_number_of_sims = $computed_number_of_sims\n");
+        print ("  \$sims = $sims\n");
+        die;
+    }
 
     my @new_array;
 

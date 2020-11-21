@@ -34,8 +34,8 @@ sub setup_state {
         return (undef);
     }
 
-    my $today_string = $lookup_hash_ptr->{'todays_date_string_directories'};
-    print ("  \$today_string = $today_string\n");
+    my $today_string = $lookup_hash_ptr->{'todays_date_string_for_directories'};
+    # print ("  \$today_string = $today_string\n");
 
     opendir (DIR, $dir) or die "Can't open $dir: $!";
     while (my $fn = readdir (DIR)) {

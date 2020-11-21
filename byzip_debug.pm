@@ -10,11 +10,19 @@ use strict;
 my $print_stuff = $main::pp_report_sim_messages;
 
 sub make_case_list {
-    my $cases_list_ptr = shift;
+    my $input = shift;
 
-    my @cases_list = @$cases_list_ptr;
-
+    my @cases_list;
     my @debug_cases_list;
+
+    my $type = ref ($input);
+    if ($type eq 'ARRAY') {
+        @cases_list = @$input;
+    }
+    elsif ($type eq 'SCALAR') {
+        my %temp = %$input;
+        push (@cases_list, %temp);
+    }
 
     foreach my $tc (@cases_list) {
         my $begin_dt = $tc->{'begin_dt'};
@@ -50,7 +58,7 @@ sub report_case {
     my $first_line_to_print;
     my $dt;
 
-    my @list;
+    # my @list;
 
     my $len = @$cases_list_1_ptr;
     if ($len) {
@@ -61,7 +69,7 @@ sub report_case {
 
         for (my $i = $first_line_to_print; $i < $len; $i++) {
             my $hash = shift (@$cases_list_1_ptr);
-            push (@list, $hash);
+            # push (@list, $hash);
             $line = sprintf ("  %s to %s is serial %03d",
                 main::make_printable_date_string ($hash->{'begin_dt'}),
                 main::make_printable_date_string ($hash->{'end_dt'}),
@@ -70,7 +78,7 @@ sub report_case {
         }
     }
 
-    push (@list, $current_case);
+    # push (@list, $current_case);
     $line = sprintf ("  %s to %s is serial %03d **",
         main::make_printable_date_string ($current_case->{'begin_dt'}),
         main::make_printable_date_string ($current_case->{'end_dt'}),
@@ -88,7 +96,7 @@ sub report_case {
 
         for (my $i = $first_line_to_print; $i <= $last_line_to_print; $i++) {
             my $hash = shift (@$cases_list_2_ptr);
-            push (@list, $hash);
+            # push (@list, $hash);
             $line = sprintf ("  %s to %s is serial %03d",
                 main::make_printable_date_string ($hash->{'begin_dt'}),
                 main::make_printable_date_string ($hash->{'end_dt'}),
@@ -116,7 +124,7 @@ sub report_case {
 
     # print ("  \$begin_cmp_result = $begin_cmp_result\n");
     # print ("  \$end_cmp_result = $end_cmp_result\n");
-    exit (1);
+    # exit (1);
 }
 
 1;
