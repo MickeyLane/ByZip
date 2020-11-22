@@ -14,6 +14,12 @@ sub process {
     my $debug_cases_list_ptr = shift;
     my $print_stuff = shift;
     
+
+
+    $print_stuff = 1;
+
+
+
     my $running_total_of_dead = 0;
     my $running_total_of_cured = 0;
     my $currently_sick = 0;
@@ -61,7 +67,7 @@ sub process {
         my @new_cases_list;
 
         my $current_sim_epoch = $current_sim_dt->epoch();
-
+        my $top_case_ptr;
         my $string_for_debug;
 
         my $a_case_was_processed = 0;
@@ -80,7 +86,7 @@ sub process {
             #
             # Get the next case
             #
-            my $top_case_ptr = shift (@cases_list);
+            $top_case_ptr = shift (@cases_list);
 
             my $top_case_begin_dt = $top_case_ptr->{'begin_dt'};
             if (!(defined ($top_case_begin_dt))) {
@@ -99,19 +105,6 @@ sub process {
             my $serial = $top_case_ptr->{'serial'};
             my $case_state = $top_case_ptr->{'sim_state'};
 
-            # #
-            # # Figure out how long this case has been in process
-            # #
-            # my $duration = $this_case_begin_epoch - $current_sim_epoch;
-            # my $days = 0;
-            # if ($duration > 0) {
-            #     $days = int ($duration / 86400);
-            # }
-
-            # if ($serial == $last_serial || $days > 30) {
-            #     $finished_processing_this_day = 1;
-            # }
-            
             if ($print_stuff) {
                 my $b = main::make_printable_date_string ($top_case_begin_dt);
                 my $e = main::make_printable_date_string ($top_case_end_dt);
@@ -123,19 +116,6 @@ sub process {
                 die;
             }
 
-            # my $begin_cmp_result = DateTime->compare ($current_sim_dt, $top_case_begin_dt);
-            # my $end_cmp_result = DateTime->compare ($current_sim_dt, $top_case_end_dt);
-            # if ($print_stuff && 0) {
-            #     print ("    \$begin_cmp_result = $begin_cmp_result\n");
-            #     print ("    \$end_cmp_result = $end_cmp_result\n");
-            # }
-            
-            # if ($end_cmp_result == -1 && $case_state eq 'not started') {
-            #     #
-            #     # Startup 'bug'
-            #     #
-            #     $begin_cmp_result = 0;
-            # }
             if ($this_case_end_epoch < $current_sim_epoch) {
                 #
                 # Error
@@ -174,17 +154,14 @@ sub process {
                 # Put it in the new list. Use the default output line
                 #
                 add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
-                # my $result = add_to_new_cases_list (\@new_cases_list, $top_case_ptr);
-                # if (!$result) {
-                #     die;
-                # }
-                # push (@new_cases_list, $top_case_ptr);
+
                 $string_for_debug = 'can not process yet';
 
                 if ($a_case_was_processed) {
                     $finished_processing_this_day = 1;
                 }
 
+                undef ($top_case_ptr);
                 goto end_of_cases_for_this_sim_date;
             }
 
@@ -195,11 +172,7 @@ sub process {
                 #
                 # Put it in the new list. Make a new output line
                 #
-                my $result = add_to_new_cases_list (\@new_cases_list, $top_case_ptr);
-                if (!$result) {
-                    die;
-                }
-                #push (@new_cases_list, $top_case_ptr);
+                add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
 
                 my $this_is_an_untested_positive_case = 0;
                 if (exists ($top_case_ptr->{'untested_positive'})) {
@@ -228,6 +201,7 @@ sub process {
                 $string_for_debug = 'new';
 
                 $a_case_was_processed = 1;
+                undef ($top_case_ptr);
                 goto end_of_cases_for_this_sim_date;
 
             }
@@ -276,6 +250,7 @@ sub process {
                 $string_for_debug = 'ongoing';
 
                 $a_case_was_processed = 1;
+                undef ($top_case_ptr);
                 goto end_of_cases_for_this_sim_date;
             }
 
@@ -327,6 +302,7 @@ sub process {
                 $string_for_debug = 'ending';
 
                 $a_case_was_processed = 1;
+                undef ($top_case_ptr);
                 goto end_of_cases_for_this_sim_date;
             }
 
@@ -370,13 +346,12 @@ end_of_cases_for_this_sim_date:
             print ("  New cases list has $cnt cases\n");
         }
 
-        add_to_new_cases_list (\@new_cases_list, \@cases_list);
-        my $result = add_to_new_cases_list (\@new_cases_list, \@cases_list);
-        if (!$result) {
+        if (defined ($top_case_ptr)) {
+            print ("\$top_case_ptr is defined when it should not be\n");
             die;
         }
-        # push (@new_cases_list, @cases_list);
-        @cases_list = @new_cases_list;
+
+        add_to_new_cases_list (\@new_cases_list, \@cases_list) or die;
 
         push (@output_csv, "$output_line");
 
@@ -396,19 +371,23 @@ sub add_to_new_cases_list {
     my $new_case_list_input = shift;
     my $case_input = shift;
 
+    my $on_success_print_comments = 0;
+
     my @list;
     my %case;
     my @case_list;
     my $add_single_case_flag = 0;
     my $add_list_of_cases_flag = 0;
+    my @comment_list;
 
-    print ("\n");
+    push (@comment_list, "In add_to_new_cases_list...");
 
     #
     # Figure out 1st argument
     #
     my $type = ref ($new_case_list_input);
-    print ("1st \$type = $type\n");
+    push (@comment_list, "  1st \$type = $type");
+
     if ($type eq 'ARRAY') {
         @list = @$new_case_list_input;
     }
@@ -420,7 +399,8 @@ sub add_to_new_cases_list {
     # Figure out 2nd argument
     #
     $type = ref ($case_input);
-    print ("2nd \$type = $type\n");
+    push (@comment_list, "  2nd \$type = $type");
+    
     if ($type eq 'HASH') {
         %case = %$case_input;
         $add_single_case_flag = 1;
@@ -434,12 +414,12 @@ sub add_to_new_cases_list {
     }
 
     my $case_list_len = @list;
-    print ("\$case_list_len = $case_list_len\n");
+    push (@comment_list, "  \$case_list_len = $case_list_len");
 
     if ($add_single_case_flag) {
         if ($case_list_len == 0) {
             push (@$new_case_list_input, $case_input);
-            return (1);
+            goto success_exit;
         }
 
         my $last_hash_ptr = $list[$case_list_len - 1];
@@ -447,20 +427,21 @@ sub add_to_new_cases_list {
 
         my $case_serial = $case{'serial'};
 
-        print ("\$last_list_serial = $last_list_serial\n");
-        print ("\$case_serial = $case_serial\n");
+        push (@comment_list, "  \$last_list_serial = $last_list_serial");
+        push (@comment_list, "  \$case_serial = $case_serial");
 
         if ($case_serial < $last_list_serial) {
-            print ("Out of sequence add attampt\n");
-            return (0);
+            push (@comment_list, "  Out of sequence add attampt");
+            goto error_exit;
         }
 
         push (@$new_case_list_input, $case_input);
+        goto success_exit;
     }
     elsif ($add_list_of_cases_flag) {
         if ($case_list_len == 0) {
             push (@$new_case_list_input, @case_list);
-            return (1);
+            goto success_exit;
         }
 
         my $last_hash_ptr = $list[$case_list_len - 1];
@@ -470,17 +451,32 @@ sub add_to_new_cases_list {
         my $first_list_serial = $first_list_hash_ptr->{'serial'};
 
         if ($first_list_serial < $last_list_serial) {
-            print ("Out of sequence list add attampt\n");
-            return (0);
+            push (@comment_list, "  Out of sequence list add attampt");
+            goto error_exit;
         }
 
         push (@$new_case_list_input, @case_list);
+        goto success_exit;
     }
-    else {
-        die;
+
+    die "Not supposed to reach this point";
+
+success_exit:
+    if ($on_success_print_comments) {
+        foreach my $c (@comment_list) {
+            print ("  $c\n");
+        }
     }
 
     return (1);
+
+
+error_exit:
+    foreach my $c (@comment_list) {
+        print ("  $c\n");
+    }
+
+    return (0);
 }
 
 1;
