@@ -36,13 +36,14 @@ sub process {
     $temp_hash_ptr = $cases_list[$case_count - 1];
     my $last_simulation_dt = $temp_hash_ptr->{'begin_dt'};
 
-    my $done = 0;
     my $current_sim_dt = $first_simulation_dt->clone();
     my $top_case_end_dt;
     my $output_line;
-    my $do_startup_safty_check = 1;
 
-    while (!$done) {
+    my $processing_day_number = 1;
+    my $do_startup_safty_check = 1;
+    my $finished_processing_days = 0;
+    while (!$finished_processing_days) {
         if ($do_startup_safty_check) {
             if (!(defined ($current_sim_dt))) {
                 print ("It's broken, Jim\n");
@@ -57,13 +58,15 @@ sub process {
             print ("\n$dir_string...\n");
         }
 
-        my $done_with_this_day = 0;
         my @new_cases_list;
 
         my $current_sim_epoch = $current_sim_dt->epoch();
 
         my $string_for_debug;
-        while (!$done_with_this_day) {
+
+        my $a_case_was_processed = 0;
+        my $finished_processing_this_day = 0;
+        while (!$finished_processing_this_day) {
             #
             # Make a default output line
             #
@@ -82,27 +85,32 @@ sub process {
             my $top_case_begin_dt = $top_case_ptr->{'begin_dt'};
             if (!(defined ($top_case_begin_dt))) {
                 print ("Begin date is undefined\n");
-                exit (1);
+                die;
             }
+            my $this_case_begin_epoch = $top_case_begin_dt->epoch();
+
             my $top_case_end_dt = $top_case_ptr->{'end_dt'};
             if (!(defined ($top_case_end_dt))) {
                 print ("End date is undefined\n");
-                exit (1);
+                die;
             }
-            my $serial = $top_case_ptr->{'serial'};
-            my $case_state = $top_case_ptr->{'sim_state'};
-            my $this_case_begin_epoch = $top_case_begin_dt->epoch();
             my $this_case_end_epoch = $top_case_end_dt->epoch();
 
-            my $duration = $this_case_begin_epoch - $current_sim_epoch;
-            my $days = 0;
-            if ($duration > 0) {
-                $days = int ($duration / 86400);
-            }
+            my $serial = $top_case_ptr->{'serial'};
+            my $case_state = $top_case_ptr->{'sim_state'};
 
-            if ($serial == $last_serial || $days > 30) {
-                $done_with_this_day = 1;
-            }
+            # #
+            # # Figure out how long this case has been in process
+            # #
+            # my $duration = $this_case_begin_epoch - $current_sim_epoch;
+            # my $days = 0;
+            # if ($duration > 0) {
+            #     $days = int ($duration / 86400);
+            # }
+
+            # if ($serial == $last_serial || $days > 30) {
+            #     $finished_processing_this_day = 1;
+            # }
             
             if ($print_stuff) {
                 my $b = main::make_printable_date_string ($top_case_begin_dt);
@@ -111,8 +119,8 @@ sub process {
             }
 
             if ($case_state eq 'cured') {
-                print ("  Attempt to process $serial in state \"$case_state\"\n");
-                exit (1);
+                print ("  Attempt to process a cured case. \$serial = $serial\n");
+                die;
             }
 
             # my $begin_cmp_result = DateTime->compare ($current_sim_dt, $top_case_begin_dt);
@@ -130,8 +138,11 @@ sub process {
             # }
             if ($this_case_end_epoch < $current_sim_epoch) {
                 #
+                # Error
+                # -----
+                #
                 # Case ended before the current sim date
-                # Do NOT put it in the new list
+                # Should not be in the list
                 #
                 print ("Found a case that ended before the current sim date\n");
                 byzip_debug::report_case (
@@ -139,29 +150,40 @@ sub process {
                     $top_case_ptr,
                     \@cases_list);
 
-                my $cases_list_1_ptr = byzip_debug::make_case_list (\@cases_list);
-                my $cases_list_2_ptr = byzip_debug::make_case_list ($top_case_ptr);
-                my $cases_list_3_ptr = byzip_debug::make_case_list (\@new_cases_list);
+                # my $cases_list_1_ptr = byzip_debug::make_case_list (\@cases_list);
+                # my $cases_list_2_ptr = byzip_debug::make_case_list ($top_case_ptr);
+                # my $cases_list_3_ptr = byzip_debug::make_case_list (\@new_cases_list);
 
-                my @debug_case_list = @$cases_list_1_ptr;
-                push (@debug_case_list, @$cases_list_2_ptr);
-                push (@debug_case_list, @$cases_list_3_ptr);
+                # my @debug_case_list = @$cases_list_1_ptr;
+                # push (@debug_case_list, @$cases_list_2_ptr);
+                # push (@debug_case_list, @$cases_list_3_ptr);
 
-                foreach my $dcl (@debug_case_list) {
-                    print ("$dcl\n");
-                }
+                # foreach my $dcl (@debug_case_list) {
+                #     print ("$dcl\n");
+                # }
 
                 die;
             }
 
             if ($this_case_begin_epoch > $current_sim_epoch) {
                 #
-                # No, top case can not be processed yet
+                # Not yet
+                # -------
+                #
+                # This case can not be processed yet
                 # Put it in the new list. Use the default output line
                 #
-                push (@new_cases_list, $top_case_ptr);
-                # $done_with_this_day = 1;
+                add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
+                # my $result = add_to_new_cases_list (\@new_cases_list, $top_case_ptr);
+                # if (!$result) {
+                #     die;
+                # }
+                # push (@new_cases_list, $top_case_ptr);
                 $string_for_debug = 'can not process yet';
+
+                if ($a_case_was_processed) {
+                    $finished_processing_this_day = 1;
+                }
 
                 goto end_of_cases_for_this_sim_date;
             }
@@ -173,7 +195,11 @@ sub process {
                 #
                 # Put it in the new list. Make a new output line
                 #
-                push (@new_cases_list, $top_case_ptr);
+                my $result = add_to_new_cases_list (\@new_cases_list, $top_case_ptr);
+                if (!$result) {
+                    die;
+                }
+                #push (@new_cases_list, $top_case_ptr);
 
                 my $this_is_an_untested_positive_case = 0;
                 if (exists ($top_case_ptr->{'untested_positive'})) {
@@ -201,34 +227,55 @@ sub process {
 
                 $string_for_debug = 'new';
 
+                $a_case_was_processed = 1;
                 goto end_of_cases_for_this_sim_date;
 
             }
 
-
-            if ($this_case_end_epoch > $current_sim_epoch) {
+            if ($this_case_begin_epoch < $current_sim_epoch && $this_case_end_epoch > $current_sim_epoch) {
                 #
                 # In progress
                 # -----------
                 #
                 # Put it in the new list. Use the default output line
                 #
+                # print ("  In progress...\n");
+
                 my $state = $top_case_ptr->{'sim_state'};
                 if ($state ne 'sick' && $state ne 'untested positive sick') {
                     print ("\n$dir_string...\n");
+                    print ("  \$processing_day_number = $processing_day_number\n");
+
                     print ("  Found an in-progress case not marked \"sick.\" Marked \"$state\"\n");
 
                     byzip_debug::report_case (
                         \@new_cases_list,
                         $top_case_ptr,
                         \@cases_list);
+
+                    my $temp_dt = DateTime->from_epoch (epoch => $this_case_begin_epoch);
+                    my $temp_string = main::make_printable_date_string ($temp_dt);
+                    print ("  \$this_case_begin_epoch = $temp_string\n");
+
+                    $temp_dt = DateTime->from_epoch (epoch => $current_sim_epoch);
+                    $temp_string = main::make_printable_date_string ($temp_dt);
+                    print ("  \$current_sim_epoch = $temp_string\n");
+
+                    $temp_dt = DateTime->from_epoch (epoch => $this_case_end_epoch);
+                    $temp_string = main::make_printable_date_string ($temp_dt);
+                    print ("  \$this_case_end_epoch = $temp_string\n");
                     die;
                 }
 
-                push (@new_cases_list, $top_case_ptr);
+                my $result = add_to_new_cases_list (\@new_cases_list, $top_case_ptr);
+                if (!$result) {
+                    die;
+                }
+                # push (@new_cases_list, $top_case_ptr);
 
                 $string_for_debug = 'ongoing';
 
+                $a_case_was_processed = 1;
                 goto end_of_cases_for_this_sim_date;
             }
 
@@ -279,10 +326,23 @@ sub process {
 
                 $string_for_debug = 'ending';
 
+                $a_case_was_processed = 1;
                 goto end_of_cases_for_this_sim_date;
             }
 
             print ("No clue how this happened\n");
+            print ("  $dir_string...\n");
+            my $temp_dt = DateTime->from_epoch (epoch => $this_case_begin_epoch);
+            my $temp_string = main::make_printable_date_string ($temp_dt);
+            print ("  \$this_case_begin_epoch = $temp_string\n");
+
+            $temp_dt = DateTime->from_epoch (epoch => $current_sim_epoch);
+            $temp_string = main::make_printable_date_string ($temp_dt);
+            print ("  \$current_sim_epoch = $temp_string\n");
+
+            $temp_dt = DateTime->from_epoch (epoch => $this_case_end_epoch);
+            $temp_string = main::make_printable_date_string ($temp_dt);
+            print ("  \$this_case_end_epoch = $temp_string\n");
 
             # my $cases_list_1_ptr = byzip_debug::make_case_list (\@new_cases_list);
             # my $cases_list_2_ptr = byzip_debug::make_case_list (\@cases_list);
@@ -295,24 +355,34 @@ sub process {
 
 end_of_cases_for_this_sim_date:
 
+            $processing_day_number++;
+
             if ($print_stuff) {
                 print ("  Result: $string_for_debug\n");
             }
         }
         
+        #
+        # Processing for the day is complete
+        #
         if ($print_stuff) {
             my $cnt = @new_cases_list;
             print ("  New cases list has $cnt cases\n");
         }
 
-        push (@new_cases_list, @cases_list);
+        add_to_new_cases_list (\@new_cases_list, \@cases_list);
+        my $result = add_to_new_cases_list (\@new_cases_list, \@cases_list);
+        if (!$result) {
+            die;
+        }
+        # push (@new_cases_list, @cases_list);
         @cases_list = @new_cases_list;
 
         push (@output_csv, "$output_line");
 
         my $d = DateTime->compare ($current_sim_dt, $last_simulation_dt);
         if ($d == 0) {
-            $done = 1;
+            $finished_processing_days = 1;
         }
         else {
             $current_sim_dt->add_duration ($one_day_duration_dt);
@@ -322,5 +392,95 @@ end_of_cases_for_this_sim_date:
     return (\@output_csv);
 }
 
+sub add_to_new_cases_list {
+    my $new_case_list_input = shift;
+    my $case_input = shift;
+
+    my @list;
+    my %case;
+    my @case_list;
+    my $add_single_case_flag = 0;
+    my $add_list_of_cases_flag = 0;
+
+    print ("\n");
+
+    #
+    # Figure out 1st argument
+    #
+    my $type = ref ($new_case_list_input);
+    print ("1st \$type = $type\n");
+    if ($type eq 'ARRAY') {
+        @list = @$new_case_list_input;
+    }
+    else {
+        die "Bad list input";
+    }
+
+    #
+    # Figure out 2nd argument
+    #
+    $type = ref ($case_input);
+    print ("2nd \$type = $type\n");
+    if ($type eq 'HASH') {
+        %case = %$case_input;
+        $add_single_case_flag = 1;
+    }
+    elsif ($type eq 'ARRAY') {
+        @case_list = @$case_input;
+        $add_list_of_cases_flag = 1;
+    }
+    else {
+        die "Bad case input";
+    }
+
+    my $case_list_len = @list;
+    print ("\$case_list_len = $case_list_len\n");
+
+    if ($add_single_case_flag) {
+        if ($case_list_len == 0) {
+            push (@$new_case_list_input, $case_input);
+            return (1);
+        }
+
+        my $last_hash_ptr = $list[$case_list_len - 1];
+        my $last_list_serial = $last_hash_ptr->{'serial'};
+
+        my $case_serial = $case{'serial'};
+
+        print ("\$last_list_serial = $last_list_serial\n");
+        print ("\$case_serial = $case_serial\n");
+
+        if ($case_serial < $last_list_serial) {
+            print ("Out of sequence add attampt\n");
+            return (0);
+        }
+
+        push (@$new_case_list_input, $case_input);
+    }
+    elsif ($add_list_of_cases_flag) {
+        if ($case_list_len == 0) {
+            push (@$new_case_list_input, @case_list);
+            return (1);
+        }
+
+        my $last_hash_ptr = $list[$case_list_len - 1];
+        my $last_list_serial = $last_hash_ptr->{'serial'};
+
+        my $first_list_hash_ptr = $case_list[0];
+        my $first_list_serial = $first_list_hash_ptr->{'serial'};
+
+        if ($first_list_serial < $last_list_serial) {
+            print ("Out of sequence list add attampt\n");
+            return (0);
+        }
+
+        push (@$new_case_list_input, @case_list);
+    }
+    else {
+        die;
+    }
+
+    return (1);
+}
 
 1;
