@@ -34,6 +34,7 @@ use byzip_debug;
 use byzip_setup;
 use byzip_mt;
 use byzip_make_random_choices;
+use byzip_delete_cases;
 
 package main;
 
@@ -406,30 +407,12 @@ foreach my $dir (@date_dirs) {
         # cases value is zero
         #
         if ($new_cases < 0) {
-            my @cases_to_keep;
-            while ($new_cases != 0) {
-                my $cases_count = @cases_list;
-                if ($cases_count == 0) {
-                    print ("While attempting to delete cases due to a negative new case count, ran out of cases\n");
-                    exit (1);
-                }
-                my $hash_ptr = pop (@cases_list);
-                my $from_zip = $hash_ptr->{'from_zip'};
-                if ($zip_from_this_record != $from_zip) {
-                    push (@cases_to_keep, $hash_ptr);
-                }
-                else {
-                    my $serial = $hash_ptr->{'serial'};
-                    if ($report_data_collection_messages) {
-                        print ("  Deleting case with serial = $serial\n");
-                    }
-                    $new_cases++;
-                }
-            }
-
-            push (@cases_list, @cases_to_keep);
-
-            next;
+            my $cases_to_delete_count = $new_cases * -1;
+            my ($ptr, $new_serial) = byzip_delete_cases::delete_cases_from_list (
+                \@cases_list, $cases_to_delete_count, $zip_from_this_record,
+                $case_serial_number, $report_data_collection_messages);
+            @cases_list = @$ptr;
+            $case_serial_number = $new_serial;
         }
         
         if ($new_cases == 0) {

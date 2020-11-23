@@ -7,6 +7,8 @@ use strict;
 # This file is part of byzip.pl. See information at the top of that file
 #
 
+use lib '.';
+use byzip_int_chk;
 
 sub process {
     my $cases_list_ptr = shift;
@@ -16,7 +18,7 @@ sub process {
     
 
 
-    $print_stuff = 1;
+    # $print_stuff = 1;
 
 
 
@@ -51,10 +53,7 @@ sub process {
     my $finished_processing_days = 0;
     while (!$finished_processing_days) {
         if ($do_startup_safty_check) {
-            if (!(defined ($current_sim_dt))) {
-                print ("It's broken, Jim\n");
-                exit (1);
-            }
+            byzip_int_chk::integrety_check (\@cases_list, $case_count, 1, 0, __FILE__, __LINE__);
             $do_startup_safty_check = 0;
         }
 
@@ -87,6 +86,13 @@ sub process {
             # Get the next case
             #
             $top_case_ptr = shift (@cases_list);
+            if (!(defined ($top_case_ptr))) {
+                #
+                # Hit the end of the list
+                #
+                $finished_processing_this_day = 1;
+                goto end_of_cases_for_this_sim_date;
+            }
 
             my $top_case_begin_dt = $top_case_ptr->{'begin_dt'};
             if (!(defined ($top_case_begin_dt))) {
@@ -241,11 +247,7 @@ sub process {
                     die;
                 }
 
-                my $result = add_to_new_cases_list (\@new_cases_list, $top_case_ptr);
-                if (!$result) {
-                    die;
-                }
-                # push (@new_cases_list, $top_case_ptr);
+                add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
 
                 $string_for_debug = 'ongoing';
 
@@ -341,9 +343,10 @@ end_of_cases_for_this_sim_date:
         #
         # Processing for the day is complete
         #
+        my $new_cnt = @new_cases_list;
+        my $old_cnt = @cases_list;
         if ($print_stuff) {
-            my $cnt = @new_cases_list;
-            print ("  New cases list has $cnt cases\n");
+            print ("  New cases list has $new_cnt cases, old list has $old_cnt\n");
         }
 
         if (defined ($top_case_ptr)) {
@@ -351,7 +354,15 @@ end_of_cases_for_this_sim_date:
             die;
         }
 
-        add_to_new_cases_list (\@new_cases_list, \@cases_list) or die;
+        if ($old_cnt > 0) {
+            add_to_new_cases_list (\@new_cases_list, \@cases_list) or die;
+        }
+
+        #
+        # Move the new cases list over to the cases list
+        #
+        @cases_list = @new_cases_list;
+        undef (@new_cases_list);
 
         push (@output_csv, "$output_line");
 
@@ -478,5 +489,6 @@ error_exit:
 
     return (0);
 }
+
 
 1;

@@ -21,7 +21,11 @@ sub delete_cases_from_list {
     my $case_serial_number = shift;
     my $report_data_collection_messages = shift;
 
-    print ("\nDeleting cases from zip $zip\n");
+    my $print_debug_strings = 0;
+
+    if ($print_debug_strings) {
+        print ("\nDeleting cases from zip $zip\n");
+    }
 
     my @cases_to_keep_1;
     my @cases_list = @$cases_list_ptr;
@@ -60,7 +64,7 @@ sub delete_cases_from_list {
     }
 
     $case_count = @cases_list;
-    my $result = byzip_int_chk::integrety_check (\@cases_list, $case_count, 0, __FILE__, __LINE__);
+    my $result = byzip_int_chk::integrety_check (\@cases_list, $case_count, 0, $print_debug_strings, __FILE__, __LINE__);
     if (!$result) {
         die;
     }
@@ -70,7 +74,9 @@ sub delete_cases_from_list {
     # reset the serial number counter
     #
     my $last_serial = get_last_serial (\@cases_list);
-    print ("  Last serial in the just trimmed list is $last_serial\n");
+    if ($print_debug_strings) {
+        print ("  Last serial in the just trimmed list is $last_serial\n");
+    }
 
     $case_serial_number = $last_serial + 1;
 
@@ -82,11 +88,13 @@ sub delete_cases_from_list {
         #
         # There are no cases to re-add to the list. We're done here
         #
-        print ("  Did not need to re-add cases\n");
+        if ($print_debug_strings) {
+            print ("  Did not need to re-add cases\n");
+        }
         return (\@cases_list, $case_serial_number);
     }
 
-    $result = byzip_int_chk::integrety_check (\@cases_to_keep_1, $case_count, 0, __FILE__, __LINE__);
+    $result = byzip_int_chk::integrety_check (\@cases_to_keep_1, $case_count, 0, $print_debug_strings, __FILE__, __LINE__);
     if (!$result) {
         my @new_cases_list = sort case_sort_routine (@cases_to_keep_1);
         @cases_to_keep_1 = @new_cases_list;
@@ -105,7 +113,7 @@ sub delete_cases_from_list {
         }
 
         $case_count = @cases_list;
-        my $result = byzip_int_chk::integrety_check (\@cases_list, $case_count, 0, __FILE__, __LINE__);
+        my $result = byzip_int_chk::integrety_check (\@cases_list, $case_count, 0, $print_debug_strings, __FILE__, __LINE__);
         if (!$result) {
             my $temp_dt = DateTime->from_epoch (epoch => $last_epoch_from_existing_list);
             my $temp_string = main::make_printable_date_string ($temp_dt);
@@ -119,7 +127,11 @@ sub delete_cases_from_list {
             print ("  List to be added has $case_count elements\n");
             die;
         }
-        print ("  Added cases\n");
+
+        if ($print_debug_strings) {
+            print ("  Added cases\n");
+        }
+
         return (\@cases_list, $case_serial_number);
     }
 
