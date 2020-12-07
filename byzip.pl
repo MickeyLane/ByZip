@@ -752,7 +752,6 @@ if ($plot_output_flag) {
     byzip_plot::make_plot (
         $dir,
         \@output_csv,
-        $number_of_sims,
         $max_cured,
         $zip_string,
         $begin_display_dt);
