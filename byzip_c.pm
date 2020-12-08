@@ -10,8 +10,20 @@ use strict;
 use lib '.';
 use byzip_int_chk;
 
+#
+# Input:
+#
+#   $cases_list_ptr:
+#
+#       The list of cases to be processed
+#
+#   $cases_by_date_ptr:
+#
+#       A list in the form "YYYY-MM-DD NNN" where NNN is the number of new cases on the given date
+#
 sub process {
     my $cases_list_ptr = shift;
+    my $cases_by_date_ptr = shift;
     my $last_serial = shift;
     my $debug_cases_list_ptr = shift;
     my $print_stuff = shift;
@@ -50,8 +62,8 @@ sub process {
 
     my $processing_day_number = 1;
     my $do_startup_safty_check = 1;
-    my $finished_processing_days = 0;
-    while (!$finished_processing_days) {
+    my $finished_processing_all_the_days_flag = 0;
+    while (!$finished_processing_all_the_days_flag) {
         if ($do_startup_safty_check) {
             byzip_int_chk::integrety_check (\@cases_list, $case_count, 1, 0, __FILE__, __LINE__);
             $do_startup_safty_check = 0;
@@ -63,7 +75,7 @@ sub process {
             print ("\n$dir_string...\n");
         }
 
-        my @new_cases_list;
+        my @to_be_processed_cases_list;
 
         my $current_sim_epoch = $current_sim_dt->epoch();
         my $top_case_ptr;
@@ -132,21 +144,9 @@ sub process {
                 #
                 print ("Found a case that ended before the current sim date\n");
                 byzip_debug::report_case (
-                    \@new_cases_list,
+                    \@to_be_processed_cases_list,
                     $top_case_ptr,
                     \@cases_list);
-
-                # my $cases_list_1_ptr = byzip_debug::make_case_list (\@cases_list);
-                # my $cases_list_2_ptr = byzip_debug::make_case_list ($top_case_ptr);
-                # my $cases_list_3_ptr = byzip_debug::make_case_list (\@new_cases_list);
-
-                # my @debug_case_list = @$cases_list_1_ptr;
-                # push (@debug_case_list, @$cases_list_2_ptr);
-                # push (@debug_case_list, @$cases_list_3_ptr);
-
-                # foreach my $dcl (@debug_case_list) {
-                #     print ("$dcl\n");
-                # }
 
                 die;
             }
@@ -159,7 +159,7 @@ sub process {
                 # This case can not be processed yet
                 # Put it in the new list. Use the default output line
                 #
-                add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
+                add_to_new_cases_list (\@to_be_processed_cases_list, $top_case_ptr) or die;
 
                 $string_for_debug = 'can not process yet';
 
@@ -178,7 +178,7 @@ sub process {
                 #
                 # Put it in the new list. Make a new output line
                 #
-                add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
+                add_to_new_cases_list (\@to_be_processed_cases_list, $top_case_ptr) or die;
 
                 my $this_is_an_untested_positive_case = 0;
                 if (exists ($top_case_ptr->{'untested_positive'})) {
@@ -229,7 +229,7 @@ sub process {
                     print ("  Found an in-progress case not marked \"sick.\" Marked \"$state\"\n");
 
                     byzip_debug::report_case (
-                        \@new_cases_list,
+                        \@to_be_processed_cases_list,
                         $top_case_ptr,
                         \@cases_list);
 
@@ -247,7 +247,7 @@ sub process {
                     die;
                 }
 
-                add_to_new_cases_list (\@new_cases_list, $top_case_ptr) or die;
+                add_to_new_cases_list (\@to_be_processed_cases_list, $top_case_ptr) or die;
 
                 $string_for_debug = 'ongoing';
 
@@ -322,11 +322,11 @@ sub process {
             $temp_string = main::make_printable_date_string ($temp_dt);
             print ("  \$this_case_end_epoch = $temp_string\n");
 
-            # my $cases_list_1_ptr = byzip_debug::make_case_list (\@new_cases_list);
+            # my $cases_list_1_ptr = byzip_debug::make_case_list (\@to_be_processed_cases_list);
             # my $cases_list_2_ptr = byzip_debug::make_case_list (\@cases_list);
 
             byzip_debug::report_case (
-                \@new_cases_list,
+                \@to_be_processed_cases_list,
                 $top_case_ptr,
                 \@cases_list);
             die;
@@ -343,7 +343,7 @@ end_of_cases_for_this_sim_date:
         #
         # Processing for the day is complete
         #
-        my $new_cnt = @new_cases_list;
+        my $new_cnt = @to_be_processed_cases_list;
         my $old_cnt = @cases_list;
         if ($print_stuff) {
             print ("  New cases list has $new_cnt cases, old list has $old_cnt\n");
@@ -355,20 +355,20 @@ end_of_cases_for_this_sim_date:
         }
 
         if ($old_cnt > 0) {
-            add_to_new_cases_list (\@new_cases_list, \@cases_list) or die;
+            add_to_new_cases_list (\@to_be_processed_cases_list, \@cases_list) or die;
         }
 
         #
         # Move the new cases list over to the cases list
         #
-        @cases_list = @new_cases_list;
-        undef (@new_cases_list);
+        @cases_list = @to_be_processed_cases_list;
+        undef (@to_be_processed_cases_list);
 
         push (@output_csv, "$output_line");
 
         my $d = DateTime->compare ($current_sim_dt, $last_simulation_dt);
         if ($d == 0) {
-            $finished_processing_days = 1;
+            $finished_processing_all_the_days_flag = 1;
         }
         else {
             $current_sim_dt->add_duration ($one_day_duration_dt);

@@ -43,7 +43,7 @@ sub make_case_list {
 }
 
 sub report_case {
-    my ($cases_list_1_ptr, $current_case, $cases_list_2_ptr) = @_;
+    my ($to_be_processed_cases_list_ptr, $current_case, $cases_list) = @_;
 
     # my $debug_cases_list_ptr = shift;
     # my $case_index = shift;
@@ -60,7 +60,7 @@ sub report_case {
 
     # my @list;
 
-    my $len = @$cases_list_1_ptr;
+    my $len = @$to_be_processed_cases_list_ptr;
     if ($len) {
         $first_line_to_print = $len - 10;
         if ($first_line_to_print < 0) {
@@ -68,7 +68,7 @@ sub report_case {
         }
 
         for (my $i = $first_line_to_print; $i < $len; $i++) {
-            my $hash = shift (@$cases_list_1_ptr);
+            my $hash = shift (@$to_be_processed_cases_list_ptr);
             # push (@list, $hash);
             $line = sprintf ("  %s to %s is serial %03d",
                 main::make_printable_date_string ($hash->{'begin_dt'}),
@@ -85,7 +85,7 @@ sub report_case {
         $current_case->{'serial'});
     push (@debug_cases_list, $line);
 
-    $len = @$cases_list_2_ptr;
+    $len = @$cases_list;
     if ($len) {
         $first_line_to_print = 0;
     
@@ -95,7 +95,7 @@ sub report_case {
         }
 
         for (my $i = $first_line_to_print; $i <= $last_line_to_print; $i++) {
-            my $hash = shift (@$cases_list_2_ptr);
+            my $hash = shift (@$cases_list);
             # push (@list, $hash);
             $line = sprintf ("  %s to %s is serial %03d",
                 main::make_printable_date_string ($hash->{'begin_dt'}),
@@ -125,6 +125,19 @@ sub report_case {
     # print ("  \$begin_cmp_result = $begin_cmp_result\n");
     # print ("  \$end_cmp_result = $end_cmp_result\n");
     # exit (1);
+
+                # my $cases_list_1_ptr = byzip_debug::make_case_list (\@cases_list);
+                # my $cases_list = byzip_debug::make_case_list ($top_case_ptr);
+                # my $cases_list_3_ptr = byzip_debug::make_case_list (\@to_be_processed_cases_list);
+
+                # my @debug_case_list = @$cases_list_1_ptr;
+                # push (@debug_case_list, @$cases_list);
+                # push (@debug_case_list, @$cases_list_3_ptr);
+
+                # foreach my $dcl (@debug_case_list) {
+                #     print ("$dcl\n");
+                # }
+
 }
 
 1;
