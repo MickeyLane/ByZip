@@ -674,7 +674,7 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
             $pp_report_adding_case);
     }
 
-    my $ptr = byzip_c::process (\@cases_list, $last_serial, \@debug_cases_list, $pp_report_sim_messages);
+    my $ptr = byzip_c::process (\@cases_list, \@cases_by_date, $last_serial, \@debug_cases_list, $pp_report_sim_messages);
     my @this_run_output = @$ptr;
 
     #
