@@ -20,14 +20,14 @@ sub collect_data {
     my $report_data_collection_messages = shift;
     my $report_header_changes = shift;
 
-    my @date_dirs = @$date_dirs_ptr;
+    my @fully_qualified_date_dir_list = @$date_dirs_ptr;
     my @zip_list = @$zip_list_ptr;
 
     my %new_cases_by_date_hash;
     my %previous_cases_hash;
     my @cases_list;
 
-    my $c = @date_dirs;
+    my $c = @fully_qualified_date_dir_list;
     print ("Searching for .csv files in $c dirs and collecting data...\n");
 
     #
@@ -35,12 +35,12 @@ sub collect_data {
     # and save records that might be useful
     #
     my @suffixlist = qw (.csv);
-    foreach my $dir (@date_dirs) {
+    foreach my $fully_qualified_date_dir (@fully_qualified_date_dir_list) {
         if ($report_data_collection_messages) {
-            print ("\n$dir...\n");
+            print ("\n$fully_qualified_date_dir...\n");
         }
 
-        opendir (DIR, $dir) or die "Can't open $dir: $!";
+        opendir (DIR, $fully_qualified_date_dir) or die "Can't open $fully_qualified_date_dir: $!";
 
         my $found_csv_file;
 
@@ -49,7 +49,7 @@ sub collect_data {
             # Convert the found relative file name into a fully qualified name
             # If it turns out to be a subdirectory, ignore it
             #
-            my $fully_qualified_file_name = "$dir/$rel_filename";
+            my $fully_qualified_file_name = "$fully_qualified_date_dir/$rel_filename";
             if (-d $fully_qualified_file_name) {
                 next;
             }
@@ -59,7 +59,7 @@ sub collect_data {
 
             if ($suffix eq '.csv') {
                 if (defined ($found_csv_file)) {
-                    print ("  There are multiple .csv files in $dir\n");
+                    print ("  There are multiple .csv files in $fully_qualified_date_dir\n");
                     exit (1);
                 }
 
@@ -71,7 +71,7 @@ sub collect_data {
 
         if (!(defined ($found_csv_file))) {
             if ($report_data_collection_messages) {
-                print ("  No .csv file found in $dir\n");
+                print ("  No .csv file found in $fully_qualified_date_dir\n");
             }
             next;
         }
@@ -105,7 +105,7 @@ sub collect_data {
         # Process possibly useful records, make list of useful records
         #
         $ptr = validate_possibly_useful_records (
-            $dir,
+            $fully_qualified_date_dir,
             $found_csv_file,
             \@possibly_useful_records,
             $cases_column_offset,
@@ -200,10 +200,10 @@ sub collect_data {
             #
             if ($report_data_collection_messages) {
                 print ("    New cases for $zip_from_this_record = $new_cases, total now $int_cases\n");
-                print ("    \$dir = $dir\n");
+                print ("    \$fully_qualified_date_dir = $fully_qualified_date_dir\n");
             }
 
-            if ($dir =~ /(\d{4})-(\d{2})-(\d{2})/) {
+            if ($fully_qualified_date_dir =~ /(\d{4})-(\d{2})-(\d{2})/) {
                 my $begin_dt = DateTime->new(
                     year       => $1,
                     month      => $2,
@@ -211,9 +211,12 @@ sub collect_data {
                 );
 
                 #
-                # Log new cases for the date
+                # Log new cases for the date. Note fully qualified vs relitive.
                 #
-                $new_cases_by_date_hash{$dir} = $new_cases;
+                my $i = rindex ($fully_qualified_date_dir, '/');
+                my $date_dir = substr ($fully_qualified_date_dir, $i + 1);
+                $new_cases_by_date_hash{$date_dir} = $new_cases;
+                print ("New cases for $date_dir = $new_cases\n");
 
                 for (my $nc = 0; $nc < $new_cases; $nc++) {
                     my %hash;
@@ -438,7 +441,7 @@ sub get_possibly_useful_records {
 }
 
 sub validate_possibly_useful_records {
-    my $dir = shift;
+    my $fully_qualified_date_dir = shift;
     my $csv_file_name = shift;
     my $ptr = shift;
     my $cases_column_offset = shift;
@@ -453,7 +456,7 @@ sub validate_possibly_useful_records {
 
     foreach my $record (@possibly_useful_records) {
         if ($make_debug_print_statements) {
-            # print ("$dir...\n");
+            # print ("$fully_qualified_date_dir...\n");
             print ("  \$record = $record\n");
         }
 

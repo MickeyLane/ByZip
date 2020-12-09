@@ -13,25 +13,22 @@ use byzip_int_chk;
 #
 # Input:
 #
-#   $cases_list_ptr:
+#   @cases_list:
 #
 #       The list of cases to be processed
 #
-#   $cases_by_date_ptr:
+#   %cases_by_date:
 #
-#       A list in the form "YYYY-MM-DD NNN" where NNN is the number of new cases on the given date
+#       A hash in the form "YYYY-MM-DD => NNN" where NNN is the number of new cases on the given date
 #
 sub process {
     my $cases_list_ptr = shift;
-    my $cases_by_date_ptr = shift;
+    my $new_cases_by_date_ptr = shift;
     my $last_serial = shift;
-    my $debug_cases_list_ptr = shift;
     my $print_stuff = shift;
     
-
-
-    # $print_stuff = 1;
-
+    my @cases_list = @$cases_list_ptr;
+    my %new_cases_by_date = %$new_cases_by_date_ptr;
 
 
     my $running_total_of_dead = 0;
@@ -39,10 +36,11 @@ sub process {
     my $currently_sick = 0;
     my $untested_positive_currently_sick = 0;
 
-    my @cases_list = @$cases_list_ptr;
     my $case_count = @cases_list;
 
     my @output_csv;
+    # my $top_case_end_dt;
+    my $output_line;
 
     my $one_day_duration_dt = DateTime::Duration->new (days => 1);
 
@@ -56,13 +54,17 @@ sub process {
     $temp_hash_ptr = $cases_list[$case_count - 1];
     my $last_simulation_dt = $temp_hash_ptr->{'begin_dt'};
 
+    #
+    # Set up the simulation
+    #
     my $current_sim_dt = $first_simulation_dt->clone();
-    my $top_case_end_dt;
-    my $output_line;
-
     my $processing_day_number = 1;
     my $do_startup_safty_check = 1;
     my $finished_processing_all_the_days_flag = 0;
+
+    #
+    # Sim
+    #
     while (!$finished_processing_all_the_days_flag) {
         if ($do_startup_safty_check) {
             byzip_int_chk::integrety_check (\@cases_list, $case_count, 1, 0, __FILE__, __LINE__);
@@ -70,10 +72,16 @@ sub process {
         }
 
         my $dir_string = main::make_printable_date_string ($current_sim_dt);
-
         if ($print_stuff) {
             print ("\n$dir_string...\n");
         }
+
+        my $new_cases_for_current_sim_date = 0;
+        if (exists ($new_cases_by_date{$dir_string})) {
+            $new_cases_for_current_sim_date = $new_cases_by_date{$dir_string};
+        }
+
+        print ("New cases for $dir_string = $new_cases_for_current_sim_date\n");
 
         my @to_be_processed_cases_list;
 
@@ -87,8 +95,9 @@ sub process {
             #
             # Make a default output line
             #
-            $output_line = sprintf ("%s,%d,%d,%d,%d",
+            $output_line = sprintf ("%s,%d,%d,%d,%d,%d",
                 $dir_string,
+                $new_cases_for_current_sim_date,
                 $running_total_of_cured,
                 $currently_sick,
                 $untested_positive_currently_sick,
@@ -197,8 +206,9 @@ sub process {
                     $top_case_ptr->{'sim_state'} = 'sick';
                 }
 
-                $output_line = sprintf ("%s,%d,%d,%d,%d",
+                $output_line = sprintf ("%s,%d,%d,%d,%d,%d",
                     $dir_string,
+                    $new_cases_for_current_sim_date,
                     $running_total_of_cured,
                     $currently_sick,
                     $untested_positive_currently_sick,
@@ -294,8 +304,9 @@ sub process {
                     $currently_sick--;
                 }
 
-                $output_line = sprintf ("%s,%d,%d,%d,%d",
+                $output_line = sprintf ("%s,%d%d,%d,%d,%d",
                     $dir_string,
+                    $new_cases_for_current_sim_date,
                     $running_total_of_cured,
                     $currently_sick,
                     $untested_positive_currently_sick,
@@ -490,5 +501,59 @@ error_exit:
     return (0);
 }
 
+########################################################################################
+#
+# Input:
+#
+#   $cases_by_date is a list of strings in the following format:
+#
+#      YYYY-MM-DD N
+#
+#      N is the number of new cases on the date indicated
+#
+# sub search_new_cases {
+#     my ($cases_by_date_ptr, $current_sim_dt) = @_;
+
+#     my $new_cases = 0;
+
+#     foreach my $line (@$cases_by_date_ptr) {
+#         if ($line =~ /(\d{4})-(\d{2})-(\d{2})/) {
+#             my $line_dt = DateTime->new(
+#                     year       => $1,
+#                     month      => $2,
+#                     day        => $3);
+
+#             my $count_str = substr ($line, 11);
+
+#             if ($line_dt == $current_sim_dt) {
+#                 return $count_str;
+#             }
+#         }
+#         else {
+#             print ("In search_new_cases(), expected YYYY-MM-DD N\n");
+#             print ("Got $line\n");
+#             die;
+#         }
+#     }
+
+#     return (0);
+# }
+
+# sub search_new_cases_2 {
+#     my ($cases_by_date_ptr, $sim_date_str) = @_;
+
+#     my $new_cases = 0;
+
+#     foreach my $line (@$cases_by_date_ptr) {
+#         my $line_date_str = substr ($line, 0, 10);
+#         my $count_str = substr ($line, 11);
+
+#         if ($line_date_str eq $sim_date_str) {
+#             return $count_str;
+#         }
+#     }
+
+#     return (0);
+# }
 
 1;
