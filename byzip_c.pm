@@ -81,7 +81,7 @@ sub process {
             $new_cases_for_current_sim_date = $new_cases_by_date{$dir_string};
         }
 
-        print ("New cases for $dir_string = $new_cases_for_current_sim_date\n");
+        # print ("New cases for $dir_string = $new_cases_for_current_sim_date\n");
 
         my @to_be_processed_cases_list;
 

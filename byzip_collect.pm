@@ -216,7 +216,9 @@ sub collect_data {
                 my $i = rindex ($fully_qualified_date_dir, '/');
                 my $date_dir = substr ($fully_qualified_date_dir, $i + 1);
                 $new_cases_by_date_hash{$date_dir} = $new_cases;
-                print ("New cases for $date_dir = $new_cases\n");
+                if ($report_data_collection_messages) {
+                    print ("New cases for $date_dir = $new_cases\n");
+                }
 
                 for (my $nc = 0; $nc < $new_cases; $nc++) {
                     my %hash;
