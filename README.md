@@ -14,10 +14,12 @@ This project contains data for the following
     Florida
     New York (some zips, not all)
     Pennsylvania
-    North Carolina (currently broken due to data format change early October)
+    North Carolina
     Maryland
 
-I managed to find comma separated value (.csv) files for each day. Each file contains a row for each zip code and columns for ‘zip code’ and ‘number of cases’ (along with a lot of information I’m not interested in).
+    New York data is not exactly what it seems to be and how it's computed changes from time to time. See [their repository notes] (https://github.com/nychealth/coronavirus-data/blob/master/README.md) for details.
+
+I have managed to find comma separated value (.csv) files for most days for the states mentioned. Each file contains a row for each zip code and columns for ‘zip code’ and ‘number of cases’ (along with a lot of information I’m not interested in).
 
 The simulator scans the files and, searching by 'zip code', picks out 'number of cases'. If today’s number of cases is one more than yesterday’s number of cases, then a new case has been discovered. The simulator makes a list of these new cases.
 
