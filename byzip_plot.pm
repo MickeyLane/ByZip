@@ -36,7 +36,8 @@ sub make_plot {
 
     my @csv_array = @$csv_ptr;
     
-    my $debug_prints = 0;
+    my $debug_prints = 1;
+
     my $graph_file = "$dir/graph.gif";
     if ($debug_prints) {
         print ("\$graph_file = $graph_file\n");
@@ -51,6 +52,9 @@ sub make_plot {
     my $column_count = @columns;
 
     my $computed_number_of_sims = ($column_count - $number_of_nonsim_columns) / $number_of_columns_per_sim;
+    if ($debug_prints) {
+        print ("\$computed_number_of_sims = $computed_number_of_sims\n");
+    }
 
     my @data;
 
@@ -130,20 +134,52 @@ sub make_plot {
             x_labels_vertical => 1
     ) or die $graph->error; 
 
+    my @arr_1 = qw (black green orange blue red purple);
+    my @arr_2 = qw (green orange blue red purple);
+    # my @arr;
+    # push (@arr, @arr_1);
+    # push (@arr, @arr_2);
+
+    # foreach my $q (@arr) {
+    #     print ("$q\n");
+    # }
+
     if ($computed_number_of_sims == 1) {
+        my @arr;
+        push (@arr, @arr_1);
+
         $graph->set ( 
-            dclrs 		=> [qw(black green orange blue red purple)]
+            # dclrs => [qw(black green orange blue red purple)]
+            dclrs => \@arr
         );
     }
     elsif ($computed_number_of_sims == 3) {
+        my @arr;
+        push (@arr, @arr_1);
+        push (@arr, @arr_2);
+        push (@arr, @arr_2);
+
         $graph->set ( 
-            dclrs 		=> [qw(black green orange blue red purple green orange blue red purple green orange blue red purple)]
+            # dclrs => [qw(black green orange blue red purple green orange blue red purple green orange blue red purple)]
+            dclrs => \@arr
         );
     }
     elsif ($computed_number_of_sims == 5) {
         $graph->set ( 
-            dclrs 		=> [qw(black green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple)]
+            dclrs => [qw(black green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple)]
         );
+    }
+
+    my $a0 = $data[0];
+    my $a1 = $data[1];
+    my $len0 = @$a0;
+    my $len1 = @$a1;
+    if ($len0 != $len1) {
+        print ("Lens dont match\n");
+        die;
+    }
+    else {
+        print ("\$len0 = $len0\n");
     }
 
     #

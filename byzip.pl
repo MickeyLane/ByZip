@@ -472,17 +472,17 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
 
     print ("\$non_sim_columns = $non_sim_columns, \$sim_columns = $sim_columns\n");
     
-    #
-    # Seperate the fields of the last csv record (row)
-    # and add the counts to the accumulators
-    #
-    my $len = @this_run_output;
-    my @seperated = split (',', $this_run_output[$len - 1]);
-    $cured_accum += $seperated[$non_sim_columns - 1];
-    $infectious_accum += $seperated[$non_sim_columns];
-    $sick_accum += $seperated[$non_sim_columns + 1];
-    $untested_positive_accum += $seperated[$non_sim_columns + 2];
-    $dead_accum += $seperated[$non_sim_columns + 3];
+    # #
+    # # Seperate the fields of the last csv record (row)
+    # # and add the counts to the accumulators
+    # #
+    # my $len = @this_run_output;
+    # my @seperated = split (',', $this_run_output[$len - 1]);
+    # $cured_accum += $seperated[$non_sim_columns - 1];
+    # $infectious_accum += $seperated[$non_sim_columns];
+    # $sick_accum += $seperated[$non_sim_columns + 1];
+    # $untested_positive_accum += $seperated[$non_sim_columns + 2];
+    # $dead_accum += $seperated[$non_sim_columns + 3];
 
     if ($run_number == 1) {
         #
@@ -528,13 +528,25 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
             for (my $i = 0; $i < $non_sim_columns; $i++) {
                 my $junk = shift (@temp_columns);
             }
+
+            if ($j == $output_count - 1) {
+                #
+                # Last 
+                #
+                $cured_accum += $temp_columns[0];
+                $infectious_accum += $temp_columns[1];
+                $sick_accum += $temp_columns[2];
+                $untested_positive_accum += $temp_columns[3];
+                $dead_accum += $temp_columns[4];
+            }
+
             my $new_temp = join (',', @temp_columns);
             # print ("\$new_temp = $new_temp\n");
 
             #
             # Concatenate the two strings and put in the new csv array
             #
-            push (@new_output_csv, "$existing, $new_temp");
+            push (@new_output_csv, "$existing,$new_temp");
         }
 
         @output_csv = @new_output_csv;

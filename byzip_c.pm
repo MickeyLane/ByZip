@@ -210,7 +210,6 @@ sub process {
                 $a_case_was_processed = 1;
                 undef ($top_case_ptr);
                 goto end_of_cases_for_this_sim_date;
-
             }
 
             if ($this_case_begin_epoch < $current_sim_epoch && $this_case_end_epoch > $current_sim_epoch) {
