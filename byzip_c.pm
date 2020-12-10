@@ -28,20 +28,21 @@ sub process {
     my $print_stuff = shift;
     
     my @cases_list = @$cases_list_ptr;
+    my $case_count = @cases_list;
     my %new_cases_by_date = %$new_cases_by_date_ptr;
 
-
+    #
+    # Set up things needed below
+    #
     my $running_total_of_dead = 0;
     my $running_total_of_cured = 0;
     my $currently_sick = 0;
     my $untested_positive_currently_sick = 0;
-
-    my $case_count = @cases_list;
-
+    my $currently_infectious = 0;
     my @output_csv;
-    # my $top_case_end_dt;
-    my $output_line;
-
+    my $non_sim_columns;
+    my $sim_columns;
+    my $output_csv_has_header = 0;
     my $one_day_duration_dt = DateTime::Duration->new (days => 1);
 
     #
@@ -66,6 +67,9 @@ sub process {
     # Sim
     #
     while (!$finished_processing_all_the_days_flag) {
+        #
+        # Debug...
+        #
         if ($do_startup_safty_check) {
             byzip_int_chk::integrety_check (\@cases_list, $case_count, 1, 0, __FILE__, __LINE__);
             $do_startup_safty_check = 0;
@@ -79,12 +83,10 @@ sub process {
         my $new_cases_for_current_sim_date = 0;
         if (exists ($new_cases_by_date{$dir_string})) {
             $new_cases_for_current_sim_date = $new_cases_by_date{$dir_string};
+            # print ("New cases for $dir_string = $new_cases_for_current_sim_date\n");
         }
 
-        # print ("New cases for $dir_string = $new_cases_for_current_sim_date\n");
-
         my @to_be_processed_cases_list;
-
         my $current_sim_epoch = $current_sim_dt->epoch();
         my $top_case_ptr;
         my $string_for_debug;
@@ -92,17 +94,6 @@ sub process {
         my $a_case_was_processed = 0;
         my $finished_processing_this_day = 0;
         while (!$finished_processing_this_day) {
-            #
-            # Make a default output line
-            #
-            $output_line = sprintf ("%s,%d,%d,%d,%d,%d",
-                $dir_string,
-                $new_cases_for_current_sim_date,
-                $running_total_of_cured,
-                $currently_sick,
-                $untested_positive_currently_sick,
-                $running_total_of_dead);
-
             #
             # Get the next case
             #
@@ -115,18 +106,10 @@ sub process {
                 goto end_of_cases_for_this_sim_date;
             }
 
-            my $top_case_begin_dt = $top_case_ptr->{'begin_dt'};
-            if (!(defined ($top_case_begin_dt))) {
-                print ("Begin date is undefined\n");
-                die;
-            }
+            my $top_case_begin_dt = $top_case_ptr->{'begin_dt'} or die "Begin date is undefined";
             my $this_case_begin_epoch = $top_case_begin_dt->epoch();
 
-            my $top_case_end_dt = $top_case_ptr->{'end_dt'};
-            if (!(defined ($top_case_end_dt))) {
-                print ("End date is undefined\n");
-                die;
-            }
+            my $top_case_end_dt = $top_case_ptr->{'end_dt'} or die "End date is undefined";
             my $this_case_end_epoch = $top_case_end_dt->epoch();
 
             my $serial = $top_case_ptr->{'serial'};
@@ -185,15 +168,27 @@ sub process {
                 # Begin
                 # -----
                 #
-                # Put it in the new list. Make a new output line
+                # Put it in the new list
                 #
                 add_to_new_cases_list (\@to_be_processed_cases_list, $top_case_ptr) or die;
 
+                #
+                # Determine type of new case
+                #
                 my $this_is_an_untested_positive_case = 0;
+                my $this_is_an_infectious_case = 0;
+
                 if (exists ($top_case_ptr->{'untested_positive'})) {
                     $this_is_an_untested_positive_case = 1;
                 }
 
+                if (exists ($top_case_ptr->{'infectious'})) {
+                    $this_is_an_infectious_case = 1;
+                }
+
+                #
+                # Process types of new cases
+                #
                 if ($this_is_an_untested_positive_case) {
                     $untested_positive_currently_sick++;
                     # print ("+++ \$untested_positive_currently_sick = $untested_positive_currently_sick\n");
@@ -201,18 +196,14 @@ sub process {
                     $top_case_ptr->{'sim_state'} = 'untested positive sick';
 
                 }
+                elsif ($this_is_an_infectious_case) {
+                    $currently_infectious += 1;
+                    $top_case_ptr->{'sim_state'} = 'infectious sick';
+                }
                 else {
                     $currently_sick++;
                     $top_case_ptr->{'sim_state'} = 'sick';
                 }
-
-                $output_line = sprintf ("%s,%d,%d,%d,%d,%d",
-                    $dir_string,
-                    $new_cases_for_current_sim_date,
-                    $running_total_of_cured,
-                    $currently_sick,
-                    $untested_positive_currently_sick,
-                    $running_total_of_dead);
 
                 $string_for_debug = 'new';
 
@@ -273,44 +264,62 @@ sub process {
                 #
                 # Do NOT put it in the new list
                 #
-                my $end_status = $top_case_ptr->{'ending_status'};
-                if ($end_status eq 'dead') {
-                    $running_total_of_dead++;
-                    $top_case_ptr->{'sim_state'} = 'dead';
-                }
-                elsif ($end_status eq 'cured') {
-                    $running_total_of_cured++;
-                    $top_case_ptr->{'sim_state'} = 'cured';
-                }
-
+                # Determine type of ending case
+                #
                 my $this_is_an_untested_positive_case = 0;
+                my $this_is_an_infectious_case = 0;
+
                 if (exists ($top_case_ptr->{'untested_positive'})) {
                     $this_is_an_untested_positive_case = 1;
                 }
 
+                if (exists ($top_case_ptr->{'infectious'})) {
+                    $this_is_an_infectious_case = 1;
+                }
+
+                #
+                # Process types of ending cases
+                #
                 if ($this_is_an_untested_positive_case) {
+                    $untested_positive_currently_sick--;
+
                     #
                     # Debug...
                     #
                     if ($untested_positive_currently_sick < 0) {
                         print ("Attempt to move an untested positive case from sick status to cured status\n");
-                        print ("untested positive count is zero\n");
+                        print ("Untested positive count is now below zero\n");
                         exit (1);
                     }
-                    $untested_positive_currently_sick--;
-                    # print ("--- \$untested_positive_currently_sick = $untested_positive_currently_sick\n");
+                }
+                elsif ($this_is_an_untested_positive_case) {
+                    $currently_infectious -= 1;
+
+                    #
+                    # Debug...
+                    #
+                    if ($currently_infectious < 0) {
+                        print ("Removed an infected case from the count\n");
+                        print ("Count is now below zero\n");
+                        exit (1);
+                    }
                 }
                 else {
                     $currently_sick--;
-                }
 
-                $output_line = sprintf ("%s,%d%d,%d,%d,%d",
-                    $dir_string,
-                    $new_cases_for_current_sim_date,
-                    $running_total_of_cured,
-                    $currently_sick,
-                    $untested_positive_currently_sick,
-                    $running_total_of_dead);
+                    #
+                    # Get the case disposition
+                    #
+                    my $end_status = $top_case_ptr->{'ending_status'};
+                    if ($end_status eq 'dead') {
+                        $running_total_of_dead++;
+                        # $top_case_ptr->{'sim_state'} = 'dead';
+                    }
+                    elsif ($end_status eq 'cured') {
+                        $running_total_of_cured++;
+                        # $top_case_ptr->{'sim_state'} = 'cured';
+                    }
+                }
 
                 $string_for_debug = 'ending';
 
@@ -375,6 +384,22 @@ end_of_cases_for_this_sim_date:
         @cases_list = @to_be_processed_cases_list;
         undef (@to_be_processed_cases_list);
 
+        my $output_line = sprintf ("%s,%d,%d,%d,%d,%d,%d",
+            $dir_string,
+            $new_cases_for_current_sim_date,
+            $running_total_of_cured,
+            $currently_infectious,
+            $currently_sick,
+            $untested_positive_currently_sick,
+            $running_total_of_dead);
+
+        if (!$output_csv_has_header) {
+            push (@output_csv, "Date,New,Cured,Infectious,Sick,UntestedSick,Dead");
+            $non_sim_columns = 2;
+            $sim_columns = 5;
+            $output_csv_has_header = 1;
+        }
+
         push (@output_csv, "$output_line");
 
         my $d = DateTime->compare ($current_sim_dt, $last_simulation_dt);
@@ -386,7 +411,7 @@ end_of_cases_for_this_sim_date:
         }
     }
 
-    return (\@output_csv);
+    return (\@output_csv, $non_sim_columns, $sim_columns);
 }
 
 sub add_to_new_cases_list {

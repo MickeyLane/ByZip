@@ -18,7 +18,7 @@ use List::Util qw(min);
 #
 #   $csv:
 #
-#      1st row: Date,New,Cured,Sick,UntestedSick,Dead,[repeat Cured..Dead],[repeat]
+#      1st row: Date,New,Cured,Infectious,Sick,UntestedSick,Dead,[repeat Cured..Dead],[repeat]
 #      2nd row: YYYY-MM-DD, M, N, N, N, N (etc.)
 #
 #   $sims:
@@ -28,6 +28,8 @@ use List::Util qw(min);
 sub make_plot {
     my $dir = shift;
     my $csv_ptr = shift;
+    my $number_of_nonsim_columns = shift;
+    my $number_of_columns_per_sim = shift;
     my $max_cured = shift;
     my $title = shift;
     my $begin_display_dt = shift;
@@ -35,7 +37,6 @@ sub make_plot {
     my @csv_array = @$csv_ptr;
     
     my $debug_prints = 0;
-    my $number_of_columns_per_sim = 4;
     my $graph_file = "$dir/graph.gif";
     if ($debug_prints) {
         print ("\$graph_file = $graph_file\n");
@@ -49,7 +50,7 @@ sub make_plot {
     my @columns = split (',', $column_titles);
     my $column_count = @columns;
 
-    my $computed_number_of_sims = ($column_count - 2) / $number_of_columns_per_sim;
+    my $computed_number_of_sims = ($column_count - $number_of_nonsim_columns) / $number_of_columns_per_sim;
 
     my @data;
 
@@ -85,8 +86,13 @@ sub make_plot {
     }
 
     for (my $i = 0; $i < $computed_number_of_sims; $i++) {
-        my ($cured_p, $sick_p, $untested_p, $dead_p, $new_csv_ptr_3) = get_sim_results (
-            \@csv_array, $number_of_columns_per_sim, $dates_to_skip, $max_cured);
+        my ($cured_p, $sick_p, $untested_p, $dead_p, $new_csv_ptr_3) =
+            get_sim_results (
+                \@csv_array,
+                $number_of_columns_per_sim,
+                $dates_to_skip,
+                $max_cured
+            );
         @csv_array = @$new_csv_ptr_3;
         if ($debug_prints) {
             my $row_count_after_removing_a_sim = @csv_array;
@@ -126,17 +132,17 @@ sub make_plot {
 
     if ($computed_number_of_sims == 1) {
         $graph->set ( 
-            dclrs 		=> [qw(black green orange blue red)]
+            dclrs 		=> [qw(black green orange blue red purple)]
         );
     }
     elsif ($computed_number_of_sims == 3) {
         $graph->set ( 
-            dclrs 		=> [qw(black green orange blue red green orange blue red green orange blue red)]
+            dclrs 		=> [qw(black green orange blue red purple green orange blue red purple green orange blue red purple)]
         );
     }
     elsif ($computed_number_of_sims == 5) {
         $graph->set ( 
-            dclrs 		=> [qw(black green orange blue red green orange blue red green orange blue red green orange blue red green orange blue red)]
+            dclrs 		=> [qw(black green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple)]
         );
     }
 
@@ -204,6 +210,15 @@ sub make_array_of_new_cases {
     my @new_csv;
     my @return_array;
 
+    #
+    # Debug
+    #
+    my $temp = $csv[0];
+    if ($temp =~ /\d{4}-\d{2}-\d{2}/) {
+        print ("In make_array_of_new_cases(), found a date string in the csv array\n");
+        die;
+    }
+
     for (my $i = 0; $i < $row_count; $i++) {
         my $row = shift (@csv);
         my $i = index ($row, ',');
@@ -229,29 +244,41 @@ sub get_sim_results {
     my @csv = @$csv_ptr;
     my $row_count = @csv;
     my @cured;
+    my @infectious;
     my @sick;
     my @untested;
     my @dead;
 
     my @new_csv;
 
+    #
+    # Debug
+    #
+    my $temp = $csv[0];
+    if ($temp =~ /\d{4}-\d{2}-\d{2}/) {
+        print ("In get_sim_results(), found a date string in the csv array\n");
+        die;
+    }
+
     for (my $i = 0; $i < $row_count; $i++) {
         my $row = shift (@csv);
         my @columns = split (',', $row);
 
-        my $c = min (shift (@columns), $max_cured);
-        my $s = shift (@columns);
-        my $u = shift (@columns);
-        my $d = shift (@columns);
+        my $cu = min (shift (@columns), $max_cured);
+        my $inf = shift (@columns);
+        my $sk = shift (@columns);
+        my $un = shift (@columns);
+        my $de = shift (@columns);
 
         if ($dates_to_skip > 0) {
             $dates_to_skip--;
         }
         else {
-            push (@cured, $c);
-            push (@sick, $s);
-            push (@untested, $u);
-            push (@dead, $d);
+            push (@cured, $cu);
+            push (@sick, $sk);
+            push (@infectious, $inf);
+            push (@untested, $un);
+            push (@dead, $de);
         }
         
         my $new_row = join (',', @columns);

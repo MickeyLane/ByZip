@@ -442,8 +442,11 @@ my $sick_accum = 0;
 my $untested_positive_accum = 0;
 my $dead_accum = 0;
 my @output_csv;
+my $infectious_accum = 0;
 my $output_count;
 my $output_header;
+my $non_sim_columns;
+my $sim_columns;
 
 for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
 
@@ -458,45 +461,58 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
             $pp_report_adding_case);
     }
 
-    my $ptr = byzip_c::process (
+    my ($ptr, $n, $s) = byzip_c::process (
         \@cases_list, 
         \%new_cases_by_date,
         $last_serial,
         $pp_report_sim_messages);
     my @this_run_output = @$ptr;
+    $non_sim_columns = $n;
+    $sim_columns = $s;
 
+    print ("\$non_sim_columns = $non_sim_columns, \$sim_columns = $sim_columns\n");
+    
     #
-    # One pass of the sim is complete, capture the last values
-    #
-    # Get the last csv record (row)
+    # Seperate the fields of the last csv record (row)
+    # and add the counts to the accumulators
     #
     my $len = @this_run_output;
-    my $last_record = $this_run_output[$len - 1];
-
-    # print ("\$last_record = $last_record\n");
-
-    #
-    # Seperate the fields of the last record and add the 4 counts to the accumulators
-    #
-    my @seperated = split (',', $last_record);
-    $cured_accum += $seperated[2];
-    $sick_accum += $seperated[3];
-    $untested_positive_accum += $seperated[4];
-    $dead_accum += $seperated[5];
+    my @seperated = split (',', $this_run_output[$len - 1]);
+    $cured_accum += $seperated[$non_sim_columns - 1];
+    $infectious_accum += $seperated[$non_sim_columns];
+    $sick_accum += $seperated[$non_sim_columns + 1];
+    $untested_positive_accum += $seperated[$non_sim_columns + 2];
+    $dead_accum += $seperated[$non_sim_columns + 3];
 
     if ($run_number == 1) {
         #
-        # Initialize
+        # Initialize the output header line
         #
-        $output_header = "Date,New,Cured,Sick,UntestedSick,Dead";
-        @output_csv = @this_run_output;
+        $output_header = shift (@this_run_output);
+
+        #
+        # Save the 1st sim output
+        #
+        push (@output_csv, @this_run_output);
         $output_count = @output_csv;
     }
     else {
         #
-        # Add to what has been captured so far
+        # Add to what has been captured so far for the header line
         #
-        $output_header .= ",Cured,Sick,UntestedSick,Dead";
+        my $temp = shift (@this_run_output);
+        my @temp_columns = split (',', $temp);
+        for (my $i = 0; $i < $non_sim_columns; $i++) {
+            my $junk = shift (@temp_columns);
+        }
+        my $new_temp = join (',', @temp_columns);
+        # print ("\$new_temp = $new_temp\n");
+        $output_header .= ",$new_temp";
+        # print ("\$output_header = $output_header\n");
+
+        #
+        # Add to what has been captured so far for the sim outputs
+        #
         my @new_output_csv;
         for (my $j = 0; $j < $output_count; $j++) {
             #
@@ -506,22 +522,25 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
             my $new = shift (@this_run_output);
 
             #
-            # Get everything except the date that is in the 1st column and
-            # the new count in the second column
+            # Remove the non-sim columns from the just completed sim
             #
-            # "$t" should be ",n,n,n,n"
-            #
-            my $first_comma = index ($new, ',');
-            my $second_comma = index ($new, ',', $first_comma + 1);
-            my $t = substr ($new, $second_comma);
-            # print ("\$t = $t\n");
+            @temp_columns = split (',', $new);
+            for (my $i = 0; $i < $non_sim_columns; $i++) {
+                my $junk = shift (@temp_columns);
+            }
+            my $new_temp = join (',', @temp_columns);
+            # print ("\$new_temp = $new_temp\n");
 
-            my $s = $existing .= $t;
-            push (@new_output_csv, $s);
+            #
+            # Concatenate the two strings and put in the new csv array
+            #
+            push (@new_output_csv, "$existing, $new_temp");
         }
 
         @output_csv = @new_output_csv;
     }
+
+    # print ("\$output_header = $output_header\n");
 }
 
 #
@@ -551,6 +570,8 @@ if ($plot_output_flag) {
     byzip_plot::make_plot (
         $dir,
         \@output_csv,
+        $non_sim_columns, 
+        $sim_columns,
         $max_cured,
         $zip_string,
         $begin_display_dt);
