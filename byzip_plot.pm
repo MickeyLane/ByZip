@@ -58,6 +58,10 @@ sub make_plot {
 
     my @data;
 
+    my $initial_row_count = @csv_array;
+    my $top_row = $csv_array[0];
+    my $initial_row_comma_count = $top_row =~ tr/,/,/;
+
     # my $row_count_after_removing_date = @csv_array;
     # print ("\$row_count_after_removing_date = $row_count_after_removing_date\n");
 
@@ -66,13 +70,15 @@ sub make_plot {
     #
     my ($array_of_dates_ptr, $dates_to_skip, $new_csv_ptr) = make_array_of_dates (\@csv_array, $begin_display_dt);
     push (@data, $array_of_dates_ptr);
+    print ("Added date array\n");
     @csv_array = @$new_csv_ptr;
-    if ($debug_prints) {
-        my $row_count_after_removing_date = @csv_array;
+    my $row_count_after_removing_date = @csv_array;
+    $top_row = $csv_array[0];
+    my $row_comma_count_after_removing_date = $top_row =~ tr/,/,/;
+    if ($row_comma_count_after_removing_date != $initial_row_comma_count - 1) {
         print ("\$row_count_after_removing_date = $row_count_after_removing_date\n");
-        my $top_row = $csv_array[0];
-        my $row_length_after_removing_date = length ($top_row);
-        print ("\$row_length_after_removing_date = $row_length_after_removing_date\n");
+        print ("\$row_comma_count_after_removing_date = $row_comma_count_after_removing_date\n");
+        die;
     }
 
     #
@@ -80,17 +86,25 @@ sub make_plot {
     #
     my ($array_of_new_cases_ptr, $new_csv_ptr_2) = make_array_of_new_cases (\@csv_array, $dates_to_skip);
     push (@data, $array_of_new_cases_ptr);
+    print ("Added new cases array\n");
     @csv_array = @$new_csv_ptr_2;
-    if ($debug_prints) {
-        my $row_count_after_removing_case_count = @csv_array;
+    my $row_count_after_removing_case_count = @csv_array;
+    $top_row = $csv_array[0];
+    my $row_comma_count_after_removing_case_count = $top_row =~ tr/,/,/;
+    if ($row_comma_count_after_removing_case_count != $row_comma_count_after_removing_date - 1) {
         print ("\$row_count_after_removing_case_count = $row_count_after_removing_case_count\n");
-        my $top_row = $csv_array[0];
-        my $row_length_after_removing_case_count = length ($top_row);
-        print ("\$row_length_after_removing_case_count = $row_length_after_removing_case_count\n");
+        print ("\$row_comma_count_after_removing_case_count = $row_comma_count_after_removing_case_count\n");
+        die;
     }
 
+    my $previous_row_comma_count = $row_comma_count_after_removing_case_count;
+    my $last_sim = 0;
     for (my $i = 0; $i < $computed_number_of_sims; $i++) {
-        my ($cured_p, $sick_p, $untested_p, $dead_p, $new_csv_ptr_3) =
+        if ($i == $computed_number_of_sims - 1) {
+            $last_sim = 1;
+        }
+
+        my ($cured_p, $infectious_p, $sick_p, $untested_p, $dead_p, $new_csv_ptr_3) =
             get_sim_results (
                 \@csv_array,
                 $number_of_columns_per_sim,
@@ -98,25 +112,35 @@ sub make_plot {
                 $max_cured
             );
         @csv_array = @$new_csv_ptr_3;
-        if ($debug_prints) {
-            my $row_count_after_removing_a_sim = @csv_array;
+        my $row_count_after_removing_a_sim = @csv_array;
+        $top_row = $csv_array[0];
+        my $row_comma_count_after_removing_a_sim = $top_row =~ tr/,/,/;
+        if ($last_sim) {
+            if ($row_comma_count_after_removing_a_sim != 0) {
+                die;
+            }
+        }
+        elsif ($row_comma_count_after_removing_a_sim != $previous_row_comma_count - $number_of_columns_per_sim) {
+            print ("\$row_comma_count_after_removing_a_sim = $row_comma_count_after_removing_a_sim\n");
+            print ("\$previous_row_comma_count = $previous_row_comma_count\n");
             print ("\$row_count_after_removing_a_sim = $row_count_after_removing_a_sim\n");
-            my $top_row = $csv_array[0];
-            my $row_length_after_removing_a_sim = length ($top_row);
-            print ("\$row_length_after_removing_a_sim = $row_length_after_removing_a_sim\n");
+            die;
+        }
+        else {
+            $previous_row_comma_count = $row_comma_count_after_removing_a_sim;
         }
 
+        #
+        # Order of results: Cured,Infectious,Sick,UntestedSick,Dead
+        #
+
         push (@data, $cured_p);
+        push (@data, $infectious_p);
         push (@data, $sick_p);
         push (@data, $untested_p);
         push (@data, $dead_p);
+        print ("Added 5 sim arrays\n");
     }
-
-    # my @color_array = qw (black);
-    # my @additional_color_array = qw (green orange blue red);
-    # for (my $f = 0; $f <  $computed_number_of_sims; $f++) {
-    #     push (@color_array, @additional_color_array);
-    # }
 
     my $graph = GD::Graph::lines->new (1900, 750);
     $graph->set ( 
@@ -134,52 +158,41 @@ sub make_plot {
             x_labels_vertical => 1
     ) or die $graph->error; 
 
-    my @arr_1 = qw (black green orange blue red purple);
-    my @arr_2 = qw (green orange blue red purple);
-    # my @arr;
-    # push (@arr, @arr_1);
-    # push (@arr, @arr_2);
-
-    # foreach my $q (@arr) {
-    #     print ("$q\n");
-    # }
-
-    if ($computed_number_of_sims == 1) {
-        my @arr;
-        push (@arr, @arr_1);
-
-        $graph->set ( 
-            # dclrs => [qw(black green orange blue red purple)]
-            dclrs => \@arr
-        );
-    }
-    elsif ($computed_number_of_sims == 3) {
-        my @arr;
-        push (@arr, @arr_1);
-        push (@arr, @arr_2);
-        push (@arr, @arr_2);
-
-        $graph->set ( 
-            # dclrs => [qw(black green orange blue red purple green orange blue red purple green orange blue red purple)]
-            dclrs => \@arr
-        );
-    }
-    elsif ($computed_number_of_sims == 5) {
-        $graph->set ( 
-            dclrs => [qw(black green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple green orange blue red purple)]
-        );
+    #
+    # Order of results: Cured,Infectious,Sick,UntestedSick,Dead
+    #
+    my @color_array = qw (black);   # for new cases
+    my @additional_color_array = qw (green purple orange blue red);
+    for (my $f = 0; $f < $computed_number_of_sims; $f++) {
+        push (@color_array, @additional_color_array);
     }
 
-    my $a0 = $data[0];
-    my $a1 = $data[1];
-    my $len0 = @$a0;
-    my $len1 = @$a1;
+    $graph->set ( 
+        dclrs => \@color_array
+    );
+
+
+    #
+    #
+    #
+    my $array_of_dates = $data[0];
+    my $first_array_of_results = $data[1];
+    my $len0 = @$array_of_dates;
+    my $len1 = @$first_array_of_results;
+    my $len_of_color_array = @color_array;
+    my $len_of_data_array = @data;
     if ($len0 != $len1) {
         print ("Lens dont match\n");
+        print ("\$len0 = $len0\n");
+        print ("\$len1 = $len1\n");
         die;
     }
-    else {
-        print ("\$len0 = $len0\n");
+
+    if ($len_of_color_array != $len_of_data_array - 1) {
+        print ("Color lens dont match\n");
+        print ("\$len_of_color_array = $len_of_color_array\n");
+        print ("\$len_of_data_array = $len_of_data_array\n");
+        die;
     }
 
     #
@@ -274,6 +287,9 @@ sub make_array_of_new_cases {
     return (\@return_array, \@new_csv);
 }
 
+#
+# Order of results: Cured,Infectious,Sick,UntestedSick,Dead
+#
 sub get_sim_results {
     my ($csv_ptr, $number_of_columns_per_sim, $dates_to_skip, $max_cured) = @_;
 
@@ -311,8 +327,8 @@ sub get_sim_results {
         }
         else {
             push (@cured, $cu);
-            push (@sick, $sk);
             push (@infectious, $inf);
+            push (@sick, $sk);
             push (@untested, $un);
             push (@dead, $de);
         }
@@ -322,7 +338,7 @@ sub get_sim_results {
         push (@new_csv, $new_row);
     }
 
-    return (\@cured, \@sick, \@untested, \@dead, \@new_csv);
+    return (\@cured, \@infectious, \@sick, \@untested, \@dead, \@new_csv);
 }
 
 1;
