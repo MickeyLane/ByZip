@@ -352,9 +352,9 @@ if ($untested_positive > 0) {
         push (@cases_list, $existing_case_ptr);
     }
 
-    my @new_cases_list = sort case_sort_routine (@cases_list);
-    @cases_list = @new_cases_list;
-    $count = @cases_list;
+    # my @new_cases_list = sort case_sort_routine (@cases_list);
+    # @cases_list = @new_cases_list;
+    # $count = @cases_list;
 
     #
     # 
@@ -427,6 +427,24 @@ foreach my $case_hash_ptr (@cases_list) {
 }
 
 #
+# DETERMINE INFECTIOUS CASES
+# ==========================
+#
+# $count = @cases_list;
+# for (my $i = 0; $i < $count; $i++) {
+my @new_cases_list;
+
+my $nc;
+while ($nc = shift (@cases_list)) {
+    if ($nc->{'source'} eq 'new cases') {
+        print ("x\n");
+    }
+
+    push (@new_cases_list, $nc);
+}
+@cases_list = @new_cases_list;
+
+#
 # PROCESS CASES
 # =============
 #
@@ -436,6 +454,13 @@ if ($pp_dont_do_sims) {
 }
 
 print ("Begin simulation...\n");
+
+#
+# Pre-simulation checks
+#
+@new_cases_list = sort case_sort_routine (@cases_list);
+@cases_list = @new_cases_list;
+$count = @cases_list;
 
 my $cured_accum = 0;
 my $sick_accum = 0;
@@ -470,20 +495,8 @@ for (my $run_number = 1; $run_number <= $number_of_sims; $run_number++) {
     $non_sim_columns = $n;
     $sim_columns = $s;
 
-    print ("\$non_sim_columns = $non_sim_columns, \$sim_columns = $sim_columns\n");
+    # print ("\$non_sim_columns = $non_sim_columns, \$sim_columns = $sim_columns\n");
     
-    # #
-    # # Seperate the fields of the last csv record (row)
-    # # and add the counts to the accumulators
-    # #
-    # my $len = @this_run_output;
-    # my @seperated = split (',', $this_run_output[$len - 1]);
-    # $cured_accum += $seperated[$non_sim_columns - 1];
-    # $infectious_accum += $seperated[$non_sim_columns];
-    # $sick_accum += $seperated[$non_sim_columns + 1];
-    # $untested_positive_accum += $seperated[$non_sim_columns + 2];
-    # $dead_accum += $seperated[$non_sim_columns + 3];
-
     if ($run_number == 1) {
         #
         # Initialize the output header line

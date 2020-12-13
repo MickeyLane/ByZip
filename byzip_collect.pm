@@ -226,6 +226,7 @@ sub collect_data {
                     $hash{'begin_dt'} = $begin_dt;
                     $hash{'from_zip'} = $zip_from_this_record;
                     $hash{'sim_state'} = 'not started';
+                    $hash{'source'} = 'new cases';
 
                     # my $random_non_white = int (rand (1000) + 1);
                     # if ($random_non_white <= $non_white_x_10) {
