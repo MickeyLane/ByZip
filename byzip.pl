@@ -567,7 +567,7 @@ if ($untested_positive != 0) {
     print ("  Still sick from the untested positives " . int ($untested_positive_accum / $number_of_sims) . "\n");
 }
 
-exit (1);
+exit (0);
 
 
 ###################################################################################
