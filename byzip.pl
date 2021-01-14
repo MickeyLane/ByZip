@@ -92,7 +92,7 @@ my $begin_display_dt;
 #
 # Set default for mortality rate. The mortality table seems to be broken as of 7 Dec
 #
-my $manually_set_mortality_rate = 2.1;
+my $manually_set_mortality_rate;
 
 #
 # Get input arguments
@@ -218,11 +218,11 @@ my @date_dirs = @$date_dirs_list_ptr;
 print ("Simulation values:\n");
 print ("  Zip = $zip_string\n");
 print ("  State = $state\n");
-if ($manually_set_mortality_rate == 0) {
-    print ("  Mortality = using OWID derived table of daily percentage rates\n");
+if (defined ($manually_set_mortality_rate)) {
+    print ("  Mortality = $manually_set_mortality_rate percent\n");
 }
 else {
-    print ("  Mortality = $manually_set_mortality_rate percent\n");
+    print ("  Mortality = using OWID derived table of daily percentage rates\n");
 }
 print ("  Duration_min = $duration_min days\n");
 print ("  Duration_max = $duration_max days\n");

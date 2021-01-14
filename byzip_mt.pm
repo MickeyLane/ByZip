@@ -23,7 +23,7 @@ use LWP::Simple;
 sub set_up_mortality_table {
     my $lookup_hash_ptr = shift;
     my $data_dirs_being_used_list_ptr = shift;
-    my $manually_set_mortality_rate = shift;
+    my $manually_set_mortality_rate = shift // 0;
 
     #
     # Get the lookup hash. Modifications made to this (if any) will be propagated
