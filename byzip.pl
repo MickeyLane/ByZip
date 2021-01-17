@@ -90,9 +90,12 @@ my $report_data_collection_messages = 0;  # default 'no'
 my $begin_sim_dt;
 my $begin_display_dt;
 #
-# Set default for mortality rate. The mortality table seems to be broken as of 7 Dec
+# Set default for mortality rate.
+# The mortality table seems to be broken as of 7 Dec then functioning again in early Jan 2021
+# Issues return on 1/17/2021. Table doesn't start until after begin og NY data. Don't know why
+# this wasn't a problem earlier
 #
-my $manually_set_mortality_rate;
+my $manually_set_mortality_rate = 1.5;
 
 #
 # Get input arguments
